@@ -1,0 +1,168 @@
+# ============================================================
+#  Proyecto Novedades — .gitignore
+#  Node.js + TypeScript + Express + PostgreSQL
+# ============================================================
+
+
+# ------------------------------------------------------------
+# EDITORES E IDEs
+# ------------------------------------------------------------
+
+# JetBrains — carpeta completa (WebStorm, IntelliJ, DataGrip)
+.idea/
+
+# Archivos específicos de .idea/ detectados en este proyecto:
+.idea/workspace.xml                             # Estado local del IDE (ventanas, tabs)
+.idea/modules.xml                               # Módulos del proyecto (rutas locales)
+.idea/vcs.xml                                   # Configuración local de control de versiones
+.idea/moviles.iml                               # Módulo local de la máquina
+.idea/Proyecto-novedades.iml                    # Módulo local del proyecto
+.idea/copilot.data.migration.ask2agent.xml      # Datos internos del plugin Copilot
+.idea/*.iml                                     # Cualquier otro módulo generado
+.idea/*.xml                                     # Cualquier otra configuración XML generada
+.idea/dataSources/
+.idea/dataSources.local.xml
+.idea/httpRequests/
+.idea/shelf/
+
+# Cursor IDE
+.cursor/
+
+# Visual Studio Code
+.vscode/
+!.vscode/extensions.json   # Este sí se puede compartir
+
+# Vim / Neovim
+*.swp
+*.swo
+*~
+
+
+# ------------------------------------------------------------
+# NODE.JS
+# ------------------------------------------------------------
+
+# Dependencias instaladas
+node_modules/
+
+# Caché de npm / yarn / pnpm
+.npm/
+.yarn/
+.pnpm-store/
+yarn.lock
+package-lock.json          # Descomenta si usas yarn o pnpm
+# pnpm-lock.yaml           # Descomenta si usas pnpm
+
+# Salida de compilación TypeScript
+dist/
+build/
+out/
+
+# Caché de TypeScript
+*.tsbuildinfo
+
+# Cobertura de tests
+coverage/
+.nyc_output/
+
+
+# ------------------------------------------------------------
+# VARIABLES DE ENTORNO Y SECRETOS
+# ------------------------------------------------------------
+
+#  NUNCA subir al repo — contienen credenciales, JWT secrets, etc.
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+.env.*.local
+
+# Este SÍ se sube — es la plantilla sin valores reales
+!.env.example
+
+
+# ------------------------------------------------------------
+# LOGS
+# ------------------------------------------------------------
+
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+
+# ------------------------------------------------------------
+# BASE DE DATOS / POSTGRESQL
+# ------------------------------------------------------------
+
+# Volcados y backups locales de la BD
+*.sql.backup
+*.dump
+*.bak
+/backups/
+
+# Datos locales de pgAdmin
+pgadmin4.db
+
+
+# ------------------------------------------------------------
+# UPLOADS Y ARCHIVOS ADJUNTOS
+# ------------------------------------------------------------
+
+# Archivos subidos por los usuarios (recibos de pago, etc.)
+/uploads/
+/temp/
+/tmp/
+
+
+# ------------------------------------------------------------
+# TESTS
+# ------------------------------------------------------------
+
+coverage/
+.nyc_output/
+junit.xml
+test-results/
+
+
+# ------------------------------------------------------------
+# SISTEMA OPERATIVO
+# ------------------------------------------------------------
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+
+
+# ------------------------------------------------------------
+# MISCELÁNEOS
+# ------------------------------------------------------------
+
+# Archivos de certificados SSL locales
+*.pem
+*.key
+*.cert
+*.crt
+
+# Reportes generados
+/reports/
+
+# Archivos de Postman con datos sensibles
+*.postman_environment.json
