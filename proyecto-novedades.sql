@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS Estudiantes (
     doc_alumno              VARCHAR(20)     NOT NULL UNIQUE,
     nombre_completo         VARCHAR(200)    NOT NULL,
     email_institucional     VARCHAR(150)    NOT NULL UNIQUE,
+    password_hash           VARCHAR(255)    NOT NULL DEFAULT '',
     semestre                SMALLINT        NOT NULL CHECK (semestre BETWEEN 1 AND 12),
     id_programa             INT             NOT NULL,
     matricula_activa        BOOLEAN         NOT NULL DEFAULT FALSE,
@@ -399,16 +400,23 @@ INSERT INTO Cursos (cod_curso, nombre_curso) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Estudiantes
+-- password_hash corresponde a: Password123 (bcrypt 10 rounds)
 INSERT INTO Estudiantes
     (cod_alumno, doc_alumno, nombre_completo, email_institucional,
-     semestre, id_programa, matricula_activa)
+     password_hash, semestre, id_programa, matricula_activa)
 VALUES
     ('2024001', '1000123456', 'Carlos Andres Perez Lopez',
-     'c.perez@proyectonovedades.edu.co',  3, 1, TRUE),
+     'c.perez@proyectonovedades.edu.co',
+     '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+     3, 1, TRUE),
     ('2024002', '1000654321', 'Laura Sofia Gomez Rivera',
-     'l.gomez@proyectonovedades.edu.co',  2, 1, TRUE),
+     'l.gomez@proyectonovedades.edu.co',
+     '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+     2, 1, TRUE),
     ('2023010', '1000999888', 'Miguel Torres Castillo',
-     'm.torres@proyectonovedades.edu.co', 5, 2, FALSE)  -- Matricula inactiva (prueba)
+     'm.torres@proyectonovedades.edu.co',
+     '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+     5, 2, FALSE)  -- Matricula inactiva (prueba de bloqueo)
 ON CONFLICT DO NOTHING;
 
 -- Secciones

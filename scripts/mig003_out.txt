@@ -1,0 +1,20 @@
+BEGIN
+DO
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+INSERT 0 3
+INSERT 0 2
+ALTER TABLE
+ALTER TABLE
+ id_usuario |      nombre_completo      |         email_institucional         |    rol     | activo | cod_alumno 
+------------+---------------------------+-------------------------------------+------------+--------+------------
+          1 | Carlos Andres Perez Lopez | c.perez@proyectonovedades.edu.co    | ESTUDIANTE | t      | 2024001
+          2 | Laura Sofia Gomez Rivera  | l.gomez@proyectonovedades.edu.co    | ESTUDIANTE | t      | 2024002
+          3 | Miguel Torres Castillo    | m.torres@proyectonovedades.edu.co   | ESTUDIANTE | f      | 2023010
+          4 | Ana Maria Rodriguez       | secretaria@proyectonovedades.edu.co | SECRETARIA | t      | 
+          5 | Administrador del Sistema | admin@proyectonovedades.edu.co      | ADMIN      | t      | 
+(5 filas)
+
+COMMIT

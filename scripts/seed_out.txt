@@ -1,0 +1,17 @@
+[dotenv@17.3.1] injecting env (11) from .env -- tip:  auth for agents: https://vestauth.com
+ Generando hash bcrypt de "Password123"...
+ Hash generado: $2b$10$O0n6t62MOUyaR9kwCje46ukcojI4JUQgpAYYCzy6aVo0JJ8/KIoCC
+
+ Actualizados 5 usuarios:
+   [ESTUDIANTE] c.perez@proyectonovedades.edu.co
+   [ESTUDIANTE] l.gomez@proyectonovedades.edu.co
+   [ESTUDIANTE] m.torres@proyectonovedades.edu.co
+   [SECRETARIA] secretaria@proyectonovedades.edu.co
+   [ADMIN     ] admin@proyectonovedades.edu.co
+
+ Credenciales de prueba:
+   c.perez@proyectonovedades.edu.co       | Password123 | ESTUDIANTE
+   l.gomez@proyectonovedades.edu.co       | Password123 | ESTUDIANTE
+   m.torres@proyectonovedades.edu.co      | Password123 | ESTUDIANTE (inactivo)
+   secretaria@proyectonovedades.edu.co    | Password123 | SECRETARIA
+   admin@proyectonovedades.edu.co         | Password123 | ADMIN

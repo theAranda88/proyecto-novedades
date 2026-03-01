@@ -166,3 +166,5 @@ $RECYCLE.BIN/
 
 # Archivos de Postman con datos sensibles
 *.postman_environment.json
+#  La colección SÍ se sube al repo (es documentación)
+!postman/*.postman_collection.json
