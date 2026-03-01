@@ -1,0 +1,12 @@
+[dotenv@17.3.1] injecting env (11) from .env -- tip:  secrets for agents: https://dotenvx.com/as2
+ Generando hash bcrypt de "Password123"...
+ Hash generado: $2b$10$YRm4YpzIiWKP390.2ifsMO4e12qFE96OATlKiWtJTpCzqNeh9Jy.C
+  Todos los estudiantes ya tienen password_hash. Verificando...
+ Actualizados 3 estudiantes:
+   - 2024001 | c.perez@proyectonovedades.edu.co
+   - 2024002 | l.gomez@proyectonovedades.edu.co
+   - 2023010 | m.torres@proyectonovedades.edu.co
+
+ Credenciales de prueba:
+   Email:    c.perez@proyectonovedades.edu.co
+   Password: Password123

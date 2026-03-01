@@ -1,0 +1,340 @@
+{
+  "info": {
+    "name": "Proyecto Novedades — API",
+    "description": "Colección de endpoints del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n###  Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante activo** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` de forma automática via la autorización de la colección.\n3. **No necesitas copiar ni pegar el token manualmente.**\n\n###  ¿Cómo funciona el token?\n- Al hacer login exitoso, el script automático guarda el JWT en la variable `{{token}}`.\n- La colección tiene configurado `Authorization: Bearer {{token}}` a nivel raíz.\n- Todos los endpoints heredan esa autorización automáticamente.\n- El token expira en **2 horas**. Si ves 401/403, ejecuta login de nuevo.\n\n###  Credenciales de prueba\n| Email | Contraseña | Resultado esperado |\n|---|---|---|\n| c.perez@proyectonovedades.edu.co | Password123 |  Login exitoso |\n| l.gomez@proyectonovedades.edu.co | Password123 |  Login exitoso |\n| m.torres@proyectonovedades.edu.co | Password123 |  Matrícula inactiva (403) |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "proyecto-novedades-2026"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string",
+      "description": "URL base del servidor. Cambia a la URL de producción cuando sea necesario."
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string",
+      "description": "Token JWT. Se llena automáticamente al ejecutar POST Login exitoso."
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "description": "Endpoints públicos de estado del servidor. No requieren autenticación.",
+      "item": [
+        {
+          "name": "GET Estado del servidor",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            },
+            "description": "Verifica que el servidor esté activo.\n\n**Ruta pública** — No requiere token JWT.\n\n**Respuesta esperada (200):**\n```json\n{\n  \"ok\": true,\n  \"mensaje\": \"Servidor Proyecto Novedades activo\",\n  \"datos\": { \"version\": \"1.0.0\", \"timestamp\": \"...\" },\n  \"codigo_estado\": 200\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 - Servidor activo', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(pm.response.json().ok).to.be.true);"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": " Servidor activo",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Servidor Proyecto Novedades activo\",\n  \"datos\": {\n    \"version\": \"1.0.0\",\n    \"timestamp\": \"2026-02-28T00:00:00.000Z\"\n  },\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": " Autenticación",
+      "description": "Endpoints de inicio de sesión. Rutas públicas — no requieren token previo.\n\n **Rate Limit:** 10 intentos por IP cada 15 minutos.",
+      "item": [
+        {
+          "name": "POST Login — Estudiante activo ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const respuesta = pm.response.json();",
+                  "",
+                  "pm.test('Status 200 - Login exitoso', () => pm.response.to.have.status(200));",
+                  "",
+                  "pm.test('Respuesta tiene formato estándar', () => {",
+                  "    pm.expect(respuesta).to.have.property('ok', true);",
+                  "    pm.expect(respuesta).to.have.property('mensaje');",
+                  "    pm.expect(respuesta).to.have.property('datos');",
+                  "    pm.expect(respuesta).to.have.property('codigo_estado', 200);",
+                  "});",
+                  "",
+                  "pm.test('Datos contienen token JWT', () => {",
+                  "    pm.expect(respuesta.datos).to.have.property('token');",
+                  "    pm.expect(respuesta.datos.token).to.be.a('string').and.not.empty;",
+                  "});",
+                  "",
+                  "pm.test('Token tiene formato JWT válido (3 partes)', () => {",
+                  "    const partes = respuesta.datos.token.split('.');",
+                  "    pm.expect(partes).to.have.lengthOf(3);",
+                  "});",
+                  "",
+                  "pm.test('Datos contienen cod_alumno y nombre_completo', () => {",
+                  "    pm.expect(respuesta.datos).to.have.property('cod_alumno');",
+                  "    pm.expect(respuesta.datos).to.have.property('nombre_completo');",
+                  "    pm.expect(respuesta.datos).to.have.property('expira_en', '2h');",
+                  "});",
+                  "",
+                  "//  GUARDAR TOKEN AUTOMÁTICAMENTE para todos los demás endpoints",
+                  "if (respuesta.datos && respuesta.datos.token) {",
+                  "    pm.collectionVariables.set('token', respuesta.datos.token);",
+                  "    console.log(' Token JWT guardado en {{token}}');",
+                  "    console.log(' Usuario:', respuesta.datos.nombre_completo);",
+                  "    console.log('⏱ Expira en:', respuesta.datos.expira_en);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email_institucional\": \"c.perez@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Autentica a un estudiante con matrícula activa y devuelve un token JWT.\n\n###  Flujo de autenticación completo:\n1. Envía `email_institucional` + `password` en el body\n2. El servidor valida con Zod, busca en BD y compara hash con bcrypt\n3. Si todo es correcto, devuelve el **token JWT** (expira en 2h)\n4. El script automático guarda el token en `{{token}}`\n5. Los demás endpoints lo usan via `Authorization: Bearer {{token}}`\n\n### Validaciones aplicadas:\n1. **Zod** — formato email y longitud de contraseña\n2. **BD** — existencia del estudiante\n3. **bcrypt** — comparación de contraseña con hash\n4. **Matrícula** — debe ser activa (`matricula_activa = TRUE`)"
+          },
+          "response": [
+            {
+              "name": " Login exitoso — Token generado",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Carlos Andres Perez Lopez. Sesión iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2RfYWx1bW5vIjoiMjAyNDAwMSIsIm5vbWJyZV9jb21wbGV0byI6IkNhcmxvcyBBbmRyZXMgUGVyZXogTG9wZXoiLCJyb2wiOiJFU1RVRElBTlRFIiwiaWF0IjoxNzA5MDcyMDAwLCJleHAiOjE3MDkwNzkyMDB9.ejemplo\",\n    \"cod_alumno\": \"2024001\",\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"expira_en\": \"2h\"\n  },\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Matrícula inactiva ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Status 403 - Matrícula inactiva', () => pm.response.to.have.status(403));",
+                  "pm.test('ok es false', () => pm.expect(respuesta.ok).to.be.false);",
+                  "pm.test('Mensaje indica matrícula', () => pm.expect(respuesta.mensaje).to.include('matrícula'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email_institucional\": \"m.torres@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Prueba con estudiante de matrícula inactiva (`matricula_activa = FALSE`).\n\n**Respuesta esperada (403):**\n```json\n{\n  \"ok\": false,\n  \"mensaje\": \"Su matrícula no está activa...\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}\n```"
+          },
+          "response": [
+            {
+              "name": " Matrícula inactiva",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su matrícula no está activa para el periodo actual. Contacte a la coordinación académica\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Credenciales incorrectas ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Status 401 - No autorizado', () => pm.response.to.have.status(401));",
+                  "pm.test('ok es false', () => pm.expect(respuesta.ok).to.be.false);",
+                  "pm.test('No expone info sensible', () => {",
+                  "    pm.expect(respuesta.mensaje).to.not.include('SQL');",
+                  "    pm.expect(respuesta.mensaje).to.not.include('hash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email_institucional\": \"c.perez@proyectonovedades.edu.co\",\n  \"password\": \"contrasena_incorrecta\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Prueba con contraseña incorrecta.\n\n**Respuesta esperada (401):**\n```json\n{\n  \"ok\": false,\n  \"mensaje\": \"Credenciales incorrectas. Verifique su email y contraseña\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}\n```"
+          },
+          "response": [
+            {
+              "name": " Credenciales incorrectas",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Credenciales incorrectas. Verifique su email y contraseña\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Validación Zod ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const respuesta = pm.response.json();",
+                  "pm.test('Status 422 - Datos inválidos', () => pm.response.to.have.status(422));",
+                  "pm.test('ok es false', () => pm.expect(respuesta.ok).to.be.false);",
+                  "pm.test('Mensaje indica error de validación', () => pm.expect(respuesta.mensaje).to.include('inválidos'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email_institucional\": \"esto-no-es-un-email\",\n  \"password\": \"123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Prueba de validación Zod con email inválido y password corto.\n\n**Respuesta esperada (422):**\n```json\n{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada inválidos: ...\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}\n```"
+          },
+          "response": [
+            {
+              "name": " Validación Zod fallida",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada inválidos: email_institucional: El formato del email institucional no es válido | password: La contraseña debe tener mínimo 6 caracteres\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Body vacío ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422 - Body vacío', () => pm.response.to.have.status(422));",
+                  "pm.test('ok es false', () => pm.expect(pm.response.json().ok).to.be.false);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Body completamente vacío.\n\n**Respuesta esperada (422)**"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Login — Secretaria ",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const r = pm.response.json();", "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Rol es SECRETARIA', () => pm.expect(r.datos.rol).to.eql('SECRETARIA'));", "if (r.datos?.token) { pm.collectionVariables.set('token', r.datos.token); console.log(' Token SECRETARIA guardado'); }"] } }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email_institucional\": \"secretaria@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] },
+            "description": "Autentica a una secretaria.\n\n**Permisos SECRETARIA:**\n-  Ver todas las solicitudes\n-  Aprobar / Rechazar / Observar solicitudes\n-  Ver reportes\n-  NO puede crear solicitudes\n-  NO puede gestionar usuarios"
+          },
+          "response": [{ "name": " Login Secretaria exitoso", "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Ana Maria Rodriguez. Sesión iniciada correctamente\",\n  \"datos\": { \"token\": \"eyJ...\", \"id_usuario\": 4, \"nombre_completo\": \"Ana Maria Rodriguez\", \"rol\": \"SECRETARIA\", \"expira_en\": \"2h\" },\n  \"codigo_estado\": 200\n}" }]
+        },
+        {
+          "name": "POST Login — Admin ",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const r = pm.response.json();", "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Rol es ADMIN', () => pm.expect(r.datos.rol).to.eql('ADMIN'));", "if (r.datos?.token) { pm.collectionVariables.set('token', r.datos.token); console.log(' Token ADMIN guardado'); }"] } }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email_institucional\": \"admin@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] },
+            "description": "Autentica al administrador.\n\n**Permisos ADMIN (acceso total):**\n-  Todo lo de SECRETARIA\n-  Gestionar estudiantes y usuarios\n-  Crear / desactivar secretarias"
+          },
+          "response": [{ "name": " Login Admin exitoso", "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Administrador del Sistema. Sesión iniciada correctamente\",\n  \"datos\": { \"token\": \"eyJ...\", \"id_usuario\": 5, \"nombre_completo\": \"Administrador del Sistema\", \"rol\": \"ADMIN\", \"expira_en\": \"2h\" },\n  \"codigo_estado\": 200\n}" }]
+        }
+      ]
+    }
+  ]
+}
