@@ -1,9 +1,9 @@
 {
   "info": {
-    "name": "Proyecto Novedades — API",
-    "description": "Colección de endpoints del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n###  Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante activo** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` de forma automática via la autorización de la colección.\n3. **No necesitas copiar ni pegar el token manualmente.**\n\n###  ¿Cómo funciona el token?\n- Al hacer login exitoso, el script automático guarda el JWT en la variable `{{token}}`.\n- La colección tiene configurado `Authorization: Bearer {{token}}` a nivel raíz.\n- Todos los endpoints heredan esa autorización automáticamente.\n- El token expira en **2 horas**. Si ves 401/403, ejecuta login de nuevo.\n\n###  Credenciales de prueba\n| Email | Contraseña | Resultado esperado |\n|---|---|---|\n| c.perez@proyectonovedades.edu.co | Password123 |  Login exitoso |\n| l.gomez@proyectonovedades.edu.co | Password123 |  Login exitoso |\n| m.torres@proyectonovedades.edu.co | Password123 |  Matrícula inactiva (403) |",
+    "name": "Proyecto Novedades — API v2.0",
+    "description": "Colección completa del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n\n### Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` automáticamente.\n3. Si `primer_login = true` en la respuesta, debes ejecutar **POST Cambio de Contraseña** antes de usar otros endpoints.\n\n### Credenciales de prueba (HU_DB seed)\n| Código Estudiantil | Contraseña | Rol | Estado |\n|---|---|---|---|\n| 2024001 | Password123 | estudiante | Activo, matricula activa |\n| 2024002 | Password123 | estudiante | Activo, matricula activa |\n| 2023010 | Password123 | estudiante | Activo, matricula INACTIVA |\n| SEC001  | Password123 | secretaria | Activo |\n| ADMIN001 | Password123 | admin | Activo |\n\n### Reglas de negocio implementadas (HU_DB §5)\n- **ADICION_CURSO**: limite creditos, cupos, cruce horario, no aprobada previa\n- **CAMBIO_CURSO**: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- **CAMBIO_JORNADA**: jornada diferente, grupos disponibles en nueva jornada\n- **CURSO_DIRIGIDO**: reprobada previa, numero_intentos >= 1, estado_academico habilitado\n\n### Seguridad (HU_001)\n- Bloqueo tras **5 intentos fallidos** (15 min) — HTTP 423\n- Cambio obligatorio de contraseña en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en **8h**",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_postman_id": "proyecto-novedades-2026"
+    "_postman_id": "proyecto-novedades-v2-2026"
   },
   "auth": {
     "type": "bearer",
@@ -20,19 +20,31 @@
       "key": "base_url",
       "value": "http://localhost:3000",
       "type": "string",
-      "description": "URL base del servidor. Cambia a la URL de producción cuando sea necesario."
+      "description": "URL base del servidor."
     },
     {
       "key": "token",
       "value": "",
       "type": "string",
-      "description": "Token JWT. Se llena automáticamente al ejecutar POST Login exitoso."
+      "description": "Token JWT. Se llena automáticamente al ejecutar login exitoso."
+    },
+    {
+      "key": "token_primer_login",
+      "value": "",
+      "type": "string",
+      "description": "Token temporal de primer login. Se usa solo para change-password."
+    },
+    {
+      "key": "solicitud_id",
+      "value": "1",
+      "type": "string",
+      "description": "ID de solicitud para pruebas de actualización de estado."
     }
   ],
   "item": [
     {
       "name": "Health Check",
-      "description": "Endpoints públicos de estado del servidor. No requieren autenticación.",
+      "description": "Endpoint publico de estado del servidor.",
       "item": [
         {
           "name": "GET Estado del servidor",
@@ -45,7 +57,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "health"]
             },
-            "description": "Verifica que el servidor esté activo.\n\n**Ruta pública** — No requiere token JWT.\n\n**Respuesta esperada (200):**\n```json\n{\n  \"ok\": true,\n  \"mensaje\": \"Servidor Proyecto Novedades activo\",\n  \"datos\": { \"version\": \"1.0.0\", \"timestamp\": \"...\" },\n  \"codigo_estado\": 200\n}\n```"
+            "description": "Verifica que el servidor este activo. Ruta publica — no requiere token JWT."
           },
           "event": [
             {
@@ -53,69 +65,80 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
+                  "const r = pm.response.json();",
                   "pm.test('Status 200 - Servidor activo', () => pm.response.to.have.status(200));",
-                  "pm.test('ok es true', () => pm.expect(pm.response.json().ok).to.be.true);"
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Tiene version y timestamp', () => {",
+                  "    pm.expect(r.datos).to.have.property('version');",
+                  "    pm.expect(r.datos).to.have.property('timestamp');",
+                  "});"
                 ]
               }
             }
           ],
           "response": [
             {
-              "name": " Servidor activo",
+              "name": "200 — Servidor activo",
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Servidor Proyecto Novedades activo\",\n  \"datos\": {\n    \"version\": \"1.0.0\",\n    \"timestamp\": \"2026-02-28T00:00:00.000Z\"\n  },\n  \"codigo_estado\": 200\n}"
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Servidor Proyecto Novedades activo\",\n  \"datos\": { \"version\": \"1.0.0\", \"timestamp\": \"2026-03-01T10:00:00.000Z\" },\n  \"codigo_estado\": 200\n}"
             }
           ]
         }
       ]
     },
     {
-      "name": " Autenticación",
-      "description": "Endpoints de inicio de sesión. Rutas públicas — no requieren token previo.\n\n **Rate Limit:** 10 intentos por IP cada 15 minutos.",
+      "name": "Autenticacion (HU_001)",
+      "description": "Endpoints de login y gestion de contraseñas. Rutas publicas.\n\n**Rate Limit:** 10 intentos por IP cada 15 minutos en /login.\n**Bloqueo:** 5 intentos fallidos = cuenta bloqueada 15 minutos (HTTP 423).",
       "item": [
         {
-          "name": "POST Login — Estudiante activo ",
+          "name": "POST Login — Estudiante activo",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const respuesta = pm.response.json();",
+                  "const r = pm.response.json();",
                   "",
                   "pm.test('Status 200 - Login exitoso', () => pm.response.to.have.status(200));",
                   "",
-                  "pm.test('Respuesta tiene formato estándar', () => {",
-                  "    pm.expect(respuesta).to.have.property('ok', true);",
-                  "    pm.expect(respuesta).to.have.property('mensaje');",
-                  "    pm.expect(respuesta).to.have.property('datos');",
-                  "    pm.expect(respuesta).to.have.property('codigo_estado', 200);",
+                  "pm.test('Formato estandar correcto', () => {",
+                  "    pm.expect(r).to.have.all.keys('ok','mensaje','datos','codigo_estado');",
+                  "    pm.expect(r.ok).to.be.true;",
+                  "    pm.expect(r.codigo_estado).to.eql(200);",
                   "});",
                   "",
-                  "pm.test('Datos contienen token JWT', () => {",
-                  "    pm.expect(respuesta.datos).to.have.property('token');",
-                  "    pm.expect(respuesta.datos.token).to.be.a('string').and.not.empty;",
+                  "pm.test('Token JWT presente y valido (3 partes)', () => {",
+                  "    pm.expect(r.datos.token).to.be.a('string');",
+                  "    pm.expect(r.datos.token.split('.')).to.have.lengthOf(3);",
                   "});",
                   "",
-                  "pm.test('Token tiene formato JWT válido (3 partes)', () => {",
-                  "    const partes = respuesta.datos.token.split('.');",
-                  "    pm.expect(partes).to.have.lengthOf(3);",
+                  "pm.test('Payload contiene campos HU_DB', () => {",
+                  "    pm.expect(r.datos).to.have.property('id_usuario');",
+                  "    pm.expect(r.datos).to.have.property('nombre_completo');",
+                  "    pm.expect(r.datos).to.have.property('rol');",
+                  "    pm.expect(r.datos).to.have.property('primer_login');",
+                  "    pm.expect(r.datos).to.have.property('codigo_estudiantil');",
+                  "    pm.expect(r.datos).to.have.property('expira_en');",
                   "});",
                   "",
-                  "pm.test('Datos contienen cod_alumno y nombre_completo', () => {",
-                  "    pm.expect(respuesta.datos).to.have.property('cod_alumno');",
-                  "    pm.expect(respuesta.datos).to.have.property('nombre_completo');",
-                  "    pm.expect(respuesta.datos).to.have.property('expira_en', '2h');",
+                  "pm.test('Rol en minuscula (HU_DB)', () => {",
+                  "    pm.expect(r.datos.rol).to.eql('estudiante');",
                   "});",
                   "",
-                  "//  GUARDAR TOKEN AUTOMÁTICAMENTE para todos los demás endpoints",
-                  "if (respuesta.datos && respuesta.datos.token) {",
-                  "    pm.collectionVariables.set('token', respuesta.datos.token);",
-                  "    console.log(' Token JWT guardado en {{token}}');",
-                  "    console.log(' Usuario:', respuesta.datos.nombre_completo);",
-                  "    console.log('⏱ Expira en:', respuesta.datos.expira_en);",
+                  "pm.test('primer_login es false (usuario ya cambio contrasena)', () => {",
+                  "    pm.expect(r.datos.primer_login).to.be.false;",
+                  "});",
+                  "",
+                  "// Guardar token automaticamente",
+                  "if (r.datos?.token && !r.datos.primer_login) {",
+                  "    pm.collectionVariables.set('token', r.datos.token);",
+                  "    console.log('Token guardado para:', r.datos.nombre_completo);",
+                  "} else if (r.datos?.token && r.datos.primer_login) {",
+                  "    pm.collectionVariables.set('token_primer_login', r.datos.token);",
+                  "    console.log('Token temporal guardado. Debe ejecutar change-password.');",
                   "}"
                 ]
               }
@@ -127,7 +150,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email_institucional\": \"c.perez@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"codigo_estudiantil\": \"2024001\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -135,30 +158,34 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Autentica a un estudiante con matrícula activa y devuelve un token JWT.\n\n###  Flujo de autenticación completo:\n1. Envía `email_institucional` + `password` en el body\n2. El servidor valida con Zod, busca en BD y compara hash con bcrypt\n3. Si todo es correcto, devuelve el **token JWT** (expira en 2h)\n4. El script automático guarda el token en `{{token}}`\n5. Los demás endpoints lo usan via `Authorization: Bearer {{token}}`\n\n### Validaciones aplicadas:\n1. **Zod** — formato email y longitud de contraseña\n2. **BD** — existencia del estudiante\n3. **bcrypt** — comparación de contraseña con hash\n4. **Matrícula** — debe ser activa (`matricula_activa = TRUE`)"
+            "description": "Autentica al estudiante 2024001 (Carlos Andres Perez Lopez) con matricula activa.\n\n**Campos (HU_DB v2):**\n- `codigo_estudiantil` — reemplaza email_institucional\n- `password` — minimo 8 caracteres\n\n**Flujo HU_001:**\n1. Verifica existencia (deleted_at IS NULL)\n2. Verifica si esta bloqueado (bloqueado_hasta)\n3. Compara con bcrypt (cost 12)\n4. Registra intento fallido si falla\n5. Verifica activo = TRUE\n6. Verifica matricula_activa = TRUE (solo estudiante)\n7. Genera JWT con primer_login en el payload\n8. Resetea intentos_fallidos, actualiza ultimo_login"
           },
           "response": [
             {
-              "name": " Login exitoso — Token generado",
+              "name": "200 — Login exitoso (primer_login=false)",
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Carlos Andres Perez Lopez. Sesión iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJjb2RfYWx1bW5vIjoiMjAyNDAwMSIsIm5vbWJyZV9jb21wbGV0byI6IkNhcmxvcyBBbmRyZXMgUGVyZXogTG9wZXoiLCJyb2wiOiJFU1RVRElBTlRFIiwiaWF0IjoxNzA5MDcyMDAwLCJleHAiOjE3MDkwNzkyMDB9.ejemplo\",\n    \"cod_alumno\": \"2024001\",\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"expira_en\": \"2h\"\n  },\n  \"codigo_estado\": 200\n}"
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Carlos Andres Perez Lopez. Sesion iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"id_usuario\": 3,\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": false,\n    \"codigo_estudiantil\": \"2024001\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
             }
           ]
         },
         {
-          "name": "POST Login — Matrícula inactiva ",
+          "name": "POST Login — Secretaria",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const respuesta = pm.response.json();",
-                  "pm.test('Status 403 - Matrícula inactiva', () => pm.response.to.have.status(403));",
-                  "pm.test('ok es false', () => pm.expect(respuesta.ok).to.be.false);",
-                  "pm.test('Mensaje indica matrícula', () => pm.expect(respuesta.mensaje).to.include('matrícula'));"
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Rol es secretaria (minuscula)', () => pm.expect(r.datos.rol).to.eql('secretaria'));",
+                  "pm.test('codigo_estudiantil es SEC001', () => pm.expect(r.datos.codigo_estudiantil).to.eql('SEC001'));",
+                  "if (r.datos?.token) {",
+                  "    pm.collectionVariables.set('token', r.datos.token);",
+                  "    console.log('Token SECRETARIA guardado');",
+                  "}"
                 ]
               }
             }
@@ -169,7 +196,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email_institucional\": \"m.torres@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"codigo_estudiantil\": \"SEC001\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -177,32 +204,124 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Prueba con estudiante de matrícula inactiva (`matricula_activa = FALSE`).\n\n**Respuesta esperada (403):**\n```json\n{\n  \"ok\": false,\n  \"mensaje\": \"Su matrícula no está activa...\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}\n```"
+            "description": "Autentica a la secretaria academica (SEC001).\n\nPermisos SECRETARIA: ver todas las solicitudes, aprobar/rechazar/observar."
           },
           "response": [
             {
-              "name": " Matrícula inactiva",
-              "status": "Forbidden",
-              "code": 403,
+              "name": "200 — Login Secretaria exitoso",
+              "status": "OK",
+              "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su matrícula no está activa para el periodo actual. Contacte a la coordinación académica\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Ana Maria Rodriguez Perez. Sesion iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"id_usuario\": 2,\n    \"nombre_completo\": \"Ana Maria Rodriguez Perez\",\n    \"rol\": \"secretaria\",\n    \"primer_login\": false,\n    \"codigo_estudiantil\": \"SEC001\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
             }
           ]
         },
         {
-          "name": "POST Login — Credenciales incorrectas ",
+          "name": "POST Login — Admin",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const respuesta = pm.response.json();",
-                  "pm.test('Status 401 - No autorizado', () => pm.response.to.have.status(401));",
-                  "pm.test('ok es false', () => pm.expect(respuesta.ok).to.be.false);",
-                  "pm.test('No expone info sensible', () => {",
-                  "    pm.expect(respuesta.mensaje).to.not.include('SQL');",
-                  "    pm.expect(respuesta.mensaje).to.not.include('hash');",
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Rol es admin (minuscula)', () => pm.expect(r.datos.rol).to.eql('admin'));",
+                  "if (r.datos?.token) {",
+                  "    pm.collectionVariables.set('token', r.datos.token);",
+                  "    console.log('Token ADMIN guardado');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo_estudiantil\": \"ADMIN001\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Autentica al administrador del sistema (ADMIN001). Acceso total al sistema."
+          },
+          "response": [
+            {
+              "name": "200 — Login Admin exitoso",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Administrador del Sistema. Sesion iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJ...\",\n    \"id_usuario\": 1,\n    \"nombre_completo\": \"Administrador del Sistema\",\n    \"rol\": \"admin\",\n    \"primer_login\": false,\n    \"codigo_estudiantil\": \"ADMIN001\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Matricula inactiva (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 403 - Matricula inactiva', () => pm.response.to.have.status(403));",
+                  "pm.test('ok es false', () => pm.expect(r.ok).to.be.false);",
+                  "pm.test('Mensaje menciona matricula', () => pm.expect(r.mensaje.toLowerCase()).to.include('matr'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo_estudiantil\": \"2023010\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Estudiante 2023010 con matricula_activa = FALSE.\n\nRespuesta esperada HTTP 403."
+          },
+          "response": [
+            {
+              "name": "403 — Matricula inactiva",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su matricula no esta activa para el periodo actual. Contacte a la coordinacion academica\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Credenciales incorrectas (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('ok es false', () => pm.expect(r.ok).to.be.false);",
+                  "pm.test('Mensaje menciona intentos restantes', () => {",
+                  "    pm.expect(r.mensaje).to.satisfy(m =>",
+                  "        m.includes('Credenciales incorrectas') || m.includes('intentos')",
+                  "    );",
+                  "});",
+                  "pm.test('No expone info sensible (SQL/hash)', () => {",
+                  "    pm.expect(r.mensaje).to.not.include('SQL');",
+                  "    pm.expect(r.mensaje).to.not.include('hash');",
                   "});"
                 ]
               }
@@ -214,7 +333,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email_institucional\": \"c.perez@proyectonovedades.edu.co\",\n  \"password\": \"contrasena_incorrecta\"\n}",
+              "raw": "{\n  \"codigo_estudiantil\": \"2024001\",\n  \"password\": \"contrasena_incorrecta\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -222,30 +341,30 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Prueba con contraseña incorrecta.\n\n**Respuesta esperada (401):**\n```json\n{\n  \"ok\": false,\n  \"mensaje\": \"Credenciales incorrectas. Verifique su email y contraseña\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}\n```"
+            "description": "Contraseña incorrecta. Cada intento incrementa intentos_fallidos. Al 5to intento: HTTP 423 (bloqueado 15 min)."
           },
           "response": [
             {
-              "name": " Credenciales incorrectas",
+              "name": "401 — Credenciales incorrectas",
               "status": "Unauthorized",
               "code": 401,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Credenciales incorrectas. Verifique su email y contraseña\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}"
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Credenciales incorrectas. Intentos restantes: 4\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}"
             }
           ]
         },
         {
-          "name": "POST Login — Validación Zod ",
+          "name": "POST Login — Validacion Zod (422)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "const respuesta = pm.response.json();",
-                  "pm.test('Status 422 - Datos inválidos', () => pm.response.to.have.status(422));",
-                  "pm.test('ok es false', () => pm.expect(respuesta.ok).to.be.false);",
-                  "pm.test('Mensaje indica error de validación', () => pm.expect(respuesta.mensaje).to.include('inválidos'));"
+                  "const r = pm.response.json();",
+                  "pm.test('Status 422 - Datos invalidos', () => pm.response.to.have.status(422));",
+                  "pm.test('ok es false', () => pm.expect(r.ok).to.be.false);",
+                  "pm.test('Mensaje indica validacion fallida', () => pm.expect(r.mensaje).to.include('inválidos'));"
                 ]
               }
             }
@@ -256,7 +375,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email_institucional\": \"esto-no-es-un-email\",\n  \"password\": \"123\"\n}",
+              "raw": "{\n  \"codigo_estudiantil\": \"\",\n  \"password\": \"123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -264,27 +383,553 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Prueba de validación Zod con email inválido y password corto.\n\n**Respuesta esperada (422):**\n```json\n{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada inválidos: ...\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}\n```"
+            "description": "Codigo vacio y password < 8 chars. Falla validacion Zod antes de llegar a la BD."
           },
           "response": [
             {
-              "name": " Validación Zod fallida",
+              "name": "422 — Validacion Zod fallida",
               "status": "Unprocessable Entity",
               "code": 422,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada inválidos: email_institucional: El formato del email institucional no es válido | password: La contraseña debe tener mínimo 6 caracteres\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada invalidos: codigo_estudiantil: El codigo estudiantil no puede estar vacio | password: La contrasena debe tener minimo 8 caracteres\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
             }
           ]
         },
         {
-          "name": "POST Login — Body vacío ",
+          "name": "POST Cambio de Contrasena — Primer Login (HU_001 CA-03)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Usar el token temporal de primer_login",
+                  "const tokenTemporal = pm.collectionVariables.get('token_primer_login');",
+                  "if (tokenTemporal) {",
+                  "    pm.request.headers.upsert({ key: 'Authorization', value: 'Bearer ' + tokenTemporal });",
+                  "    console.log('Usando token temporal de primer_login');",
+                  "} else {",
+                  "    console.warn('No hay token_primer_login guardado. Ejecuta login primero.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200 - Contrasena cambiada', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve nuevo token con acceso completo', () => {",
+                  "    pm.expect(r.datos).to.have.property('token');",
+                  "    pm.expect(r.datos.token.split('.')).to.have.lengthOf(3);",
+                  "});",
+                  "// Guardar el nuevo token con acceso completo",
+                  "if (r.datos?.token) {",
+                  "    pm.collectionVariables.set('token', r.datos.token);",
+                  "    pm.collectionVariables.set('token_primer_login', '');",
+                  "    console.log('Nuevo token con acceso completo guardado');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token_primer_login}}", "description": "Token temporal del primer login" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password_actual\": \"Password123\",\n  \"password_nueva\": \"NuevaContrasena456\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "change-password"]
+            },
+            "description": "Cambia la contrasena temporal. SOLO disponible cuando primer_login = TRUE.\n\nReglas de la nueva contrasena:\n- Minimo 8 caracteres\n- Al menos 1 numero\n- Al menos 1 letra\n- No puede ser igual a la temporal\n\nAl completar exitosamente devuelve un nuevo JWT con primer_login = FALSE."
+          },
+          "response": [
+            {
+              "name": "200 — Contrasena cambiada exitosamente",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Contrasena actualizada exitosamente. Puede acceder al sistema con su nueva contrasena\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"rol\": \"estudiante\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "403 — Ya cambio la contrasena",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Esta accion solo esta disponible en el primer acceso al sistema\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Recuperar Contrasena (HU_001 CA-05)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Status 422 - Body vacío', () => pm.response.to.have.status(422));",
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200 - Respuesta generica', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Respuesta no revela si el codigo existe', () => {",
+                  "    pm.expect(r.mensaje).to.include('Si el');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo_estudiantil\": \"2024001\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "forgot-password"]
+            },
+            "description": "Inicia recuperacion de contrasena. La respuesta es siempre generica para no revelar si el codigo existe (seguridad anti-enumeracion)."
+          },
+          "response": [
+            {
+              "name": "200 — Respuesta generica",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Si el codigo estudiantil existe, recibira un correo con instrucciones para restablecer su contrasena\",\n  \"datos\": null,\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Solicitudes de Novedad (HU_DB §5)",
+      "description": "Gestion completa de solicitudes academicas.\n\nMotor de validaciones automatico — el campo validacion_json registra cada chequeo.\n\n**Tipos soportados:** adicion_curso | cambio_curso | cambio_jornada | curso_dirigido\n\n**Acceso:** ESTUDIANTE crea y consulta sus propias solicitudes. SECRETARIA y ADMIN gestionan todas.",
+      "item": [
+        {
+          "name": "POST Crear Solicitud — Adicion de Curso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201 - Solicitud creada', () => pm.response.to.have.status(201));",
+                  "    pm.test('Tiene codigo_solicitud (REQ-AAAA-NNN)', () => {",
+                  "        pm.expect(r.datos.codigo_solicitud).to.match(/^REQ-\\d{4}-\\d{3}$/);",
+                  "    });",
+                  "    pm.test('Estado es PENDIENTE', () => {",
+                  "        pm.expect(r.datos.estado.toUpperCase()).to.eql('PENDIENTE');",
+                  "    });",
+                  "    pm.test('Contiene validacion_json con chequeos', () => {",
+                  "        pm.expect(r.datos.validacion_json).to.have.property('validaciones');",
+                  "        pm.expect(r.datos.validacion_json.validaciones).to.be.an('array').and.not.empty;",
+                  "    });",
+                  "    pm.test('Todos los chequeos de validacion_json pasaron', () => {",
+                  "        const v = r.datos.validacion_json;",
+                  "        pm.expect(v.aprobado).to.be.true;",
+                  "        v.validaciones.forEach(check => {",
+                  "            pm.expect(check.resultado, check.nombre + ': ' + check.detalle).to.be.true;",
+                  "        });",
+                  "    });",
+                  "    if (r.datos?.id) pm.collectionVariables.set('solicitud_id', r.datos.id);",
+                  "} else {",
+                  "    pm.test('422 - Validacion de negocio fallo (esperado si no hay cupos/cruce)', () => {",
+                  "        pm.expect(r.ok).to.be.false;",
+                  "        pm.expect(r.mensaje).to.include('validaciones');",
+                  "    });",
+                  "    console.log('Validacion fallida:', r.mensaje);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 3,\n  \"justificacion\": \"Solicito la adicion del curso Calculo Diferencial grupo nocturno ya que tengo disponibilidad horaria completa y complementa mi formacion en el semestre actual.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Crea una solicitud de ADICION de curso.\n\nValidaciones ejecutadas (HU_DB §5.3):\n1. creditos_inscritos + nuevos <= creditos_max_permitidos\n2. cupos_ocupados < cupo_maximo en el grupo\n3. Sin cruce de horario con inscripciones activas\n4. La materia no fue aprobada previamente\n\nEl grupo_id 3 = MAT101 G-03 jornada noche (cupos disponibles).\nEl estudiante 2024001 tiene PRG201 y EST301 los lunes y martes. MAT101 noche tambien es lunes 18-20, no cruza con PRG201 lunes 08-10."
+          },
+          "response": [
+            {
+              "name": "201 — Solicitud creada con validacion_json",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente. Quedara en revision por la secretaria academica\",\n  \"datos\": {\n    \"id\": 1,\n    \"codigo_solicitud\": \"REQ-2026-001\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"ADICION\",\n    \"validacion_json\": {\n      \"timestamp\": \"2026-03-01T10:30:00.000Z\",\n      \"tipo_solicitud\": \"adicion_curso\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"creditos_max_permitidos\", \"resultado\": true, \"detalle\": \"Creditos tras adicion: 12 / 20\" },\n        { \"nombre\": \"cupos_disponibles\", \"resultado\": true, \"detalle\": \"Cupos disponibles: 30\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruce de horario con materias inscritas\" },\n        { \"nombre\": \"materia_no_aprobada_previamente\", \"resultado\": true, \"detalle\": \"La materia no ha sido aprobada previamente\" }\n      ]\n    },\n    \"created_at\": \"2026-03-01T10:30:00.000Z\"\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "422 — Validacion de negocio fallo",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Solicitud rechazada por validaciones: No hay cupos disponibles en el grupo solicitado\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Solicitud — Curso Dirigido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('validacion_json.tipo_solicitud = curso_dirigido', () => {",
+                  "        pm.expect(r.datos.validacion_json.tipo_solicitud).to.eql('curso_dirigido');",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Fallo con 422 por validacion negocio', () => pm.response.to.have.status(422));",
+                  "    console.log('Detalle:', r.mensaje);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"curso_dirigido\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito modalidad de curso dirigido para Calculo Diferencial ya que lo reprobé en el semestre 2025-2 y requiero esta modalidad para avanzar en mi plan de estudios de forma efectiva.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Solicita CURSO DIRIGIDO para MAT101 (grupo 1).\n\nValidaciones (HU_DB §5.4):\n1. La materia tiene estado 'reprobada' en historial_v2\n2. numero_intentos >= 1\n3. estado_academico != 'suspendido'\n\nEl estudiante 2024001 reprobó MAT101 en 2025-2 (seed de mig004), por lo que la validacion 1 y 2 deben pasar."
+          },
+          "response": [
+            {
+              "name": "201 — Curso Dirigido aprobado por validaciones",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente.\",\n  \"datos\": {\n    \"id\": 2,\n    \"codigo_solicitud\": \"REQ-2026-002\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"CURSO_DIRIGIDO\",\n    \"validacion_json\": {\n      \"tipo_solicitud\": \"curso_dirigido\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"materia_reprobada_previa\", \"resultado\": true, \"detalle\": \"La materia tiene registro de reprobada en el historial\" },\n        { \"nombre\": \"numero_intentos_suficiente\", \"resultado\": true, \"detalle\": \"Numero de intentos: 1 (minimo requerido: 1)\" },\n        { \"nombre\": \"estado_academico_habilitado\", \"resultado\": true, \"detalle\": \"Estado academico normal permite solicitud de curso dirigido\" }\n      ]\n    }\n  },\n  \"codigo_estado\": 201\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Solicitud — Cambio de Jornada",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('validacion_json.tipo_solicitud = cambio_jornada', () => {",
+                  "        pm.expect(r.datos.validacion_json.tipo_solicitud).to.eql('cambio_jornada');",
+                  "    });",
+                  "} else {",
+                  "    console.log('Fallo validacion:', r.mensaje);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"cambio_jornada\",\n  \"jornada_actual\": \"manana\",\n  \"jornada_nueva\": \"tarde\",\n  \"justificacion\": \"Solicito cambio de jornada de manana a tarde debido a que inicio actividad laboral de medio tiempo en las mananas a partir del presente semestre y necesito reorganizar mi horario academico.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Solicita CAMBIO DE JORNADA de manana a tarde.\n\nValidaciones (HU_DB §5.2):\n1. jornada_nueva != jornada_actual\n2. Existen grupos con cupos en la nueva jornada para todas las materias inscritas"
+          },
+          "response": []
+        },
+        {
+          "name": "POST Crear Solicitud — Limite 3 superado (422)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 422 si ya tiene 3 solicitudes activas', () => {",
+                  "    if (r.ok === false && r.mensaje.includes('maximo de 3')) {",
+                  "        pm.expect(pm.response.code).to.eql(422);",
+                  "    } else {",
+                  "        console.log('Menos de 3 solicitudes activas — se creo exitosamente');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 2,\n  \"justificacion\": \"Solicito adicion del curso para completar mi carga academica del semestre. Esta materia es necesaria para cumplir los creditos requeridos.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Intenta crear una 4ta solicitud. Si el estudiante ya tiene 3 activas debe fallar con 422."
+          },
+          "response": [
+            {
+              "name": "422 — Limite de 3 solicitudes superado",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Ha alcanzado el maximo de 3 solicitudes activas para el periodo 2026-1\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Mis Solicitudes — Estudiante",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('datos es un array', () => pm.expect(r.datos).to.be.an('array'));",
+                  "if (r.datos.length > 0) {",
+                  "    pm.test('Cada solicitud tiene codigo_solicitud y validacion_json', () => {",
+                  "        r.datos.forEach(s => {",
+                  "            pm.expect(s).to.have.property('codigo_solicitud');",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/mias?periodo=2026-1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "mias"],
+              "query": [
+                { "key": "periodo", "value": "2026-1", "description": "Filtrar por periodo" },
+                { "key": "estado", "value": "", "description": "Filtrar por estado (opcional)", "disabled": true }
+              ]
+            },
+            "description": "Lista las solicitudes del estudiante autenticado (solo las propias).\n\nFiltros disponibles:\n- `?periodo=2026-1`\n- `?estado=PENDIENTE`\n- Combinados: `?periodo=2026-1&estado=PENDIENTE`\n\nAcceso: solo ESTUDIANTE."
+          },
+          "response": [
+            {
+              "name": "200 — Lista de solicitudes propias",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitudes obtenidas exitosamente\",\n  \"datos\": [\n    {\n      \"id\": 1,\n      \"codigo_solicitud\": \"REQ-2026-001\",\n      \"tipo_solicitud\": \"ADICION\",\n      \"estado\": \"PENDIENTE\",\n      \"justificacion\": \"Solicito la adicion...\",\n      \"periodo_academico\": \"2026-1\",\n      \"validacion_json\": { \"aprobado\": true, \"validaciones\": [] },\n      \"created_at\": \"2026-03-01T10:30:00.000Z\"\n    }\n  ],\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Todas las Solicitudes — Secretaria/Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('datos es array', () => pm.expect(r.datos).to.be.an('array'));",
+                  "if (r.datos.length > 0) {",
+                  "    pm.test('Cada solicitud tiene nombre_estudiante y codigo_estudiantil', () => {",
+                  "        r.datos.forEach(s => {",
+                  "            pm.expect(s).to.have.property('nombre_estudiante');",
+                  "            pm.expect(s).to.have.property('codigo_estudiantil');",
+                  "        });",
+                  "    });",
+                  "    pm.collectionVariables.set('solicitud_id', r.datos[0].id);",
+                  "    console.log('solicitud_id guardado:', r.datos[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes?periodo=2026-1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"],
+              "query": [
+                { "key": "periodo", "value": "2026-1" },
+                { "key": "estado", "value": "PENDIENTE", "disabled": true },
+                { "key": "tipo_solicitud", "value": "ADICION", "disabled": true }
+              ]
+            },
+            "description": "Lista TODAS las solicitudes del sistema. Solo SECRETARIA y ADMIN.\n\nFiltros: `?estado`, `?periodo`, `?tipo_solicitud`.\n\nIncluve nombre del estudiante y codigo para identificacion rapida.\n\nNOTA: Primero ejecuta 'POST Login — Secretaria' para tener el token correcto."
+          },
+          "response": [
+            {
+              "name": "200 — Todas las solicitudes",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitudes obtenidas exitosamente\",\n  \"datos\": [\n    {\n      \"id\": 1,\n      \"codigo_solicitud\": \"REQ-2026-001\",\n      \"tipo_solicitud\": \"ADICION\",\n      \"estado\": \"PENDIENTE\",\n      \"nombre_estudiante\": \"Carlos Andres Perez Lopez\",\n      \"codigo_estudiantil\": \"2024001\",\n      \"periodo_academico\": \"2026-1\"\n    }\n  ],\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "403 — Sin permisos (estudiante no puede ver todas)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Acceso denegado. Roles permitidos: secretaria, admin\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "PATCH Actualizar Estado — Aprobar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200 - Estado actualizado', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Mensaje indica estado aprobada', () => pm.expect(r.mensaje.toLowerCase()).to.include('aprobada'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"aprobada\",\n  \"observaciones\": \"Solicitud revisada y validada. El estudiante cumple todos los requisitos academicos para la adicion del curso.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "{{solicitud_id}}", "estado"]
+            },
+            "description": "Aprueba una solicitud pendiente. Solo SECRETARIA y ADMIN.\n\nEstados validos: en_revision | aprobada | rechazada\n\nAl aprobar: se registra aprobada_por (id del usuario que la resuelve) y fecha_resolucion."
+          },
+          "response": [
+            {
+              "name": "200 — Solicitud aprobada",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Estado de la solicitud actualizado a: aprobada\",\n  \"datos\": null,\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "PATCH Actualizar Estado — Rechazar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mensaje indica rechazada', () => pm.expect(r.mensaje.toLowerCase()).to.include('rechazada'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"rechazada\",\n  \"observaciones\": \"No se aprueba la solicitud. El horario del grupo solicitado genera cruce con otra materia activa del estudiante.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "{{solicitud_id}}", "estado"]
+            },
+            "description": "Rechaza una solicitud. Solo SECRETARIA y ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH Actualizar Estado — En Revision",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"en_revision\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "{{solicitud_id}}", "estado"]
+            },
+            "description": "Marca la solicitud en revision sin resolverla aun."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Mis Solicitudes — Sin token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401 sin token', () => pm.response.to.have.status(401));",
                   "pm.test('ok es false', () => pm.expect(pm.response.json().ok).to.be.false);"
                 ]
               }
@@ -292,47 +937,24 @@
           ],
           "request": {
             "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{}",
-              "options": { "raw": { "language": "json" } }
-            },
+            "method": "GET",
+            "header": [],
             "url": {
-              "raw": "{{base_url}}/api/auth/login",
+              "raw": "{{base_url}}/api/solicitudes/mias",
               "host": ["{{base_url}}"],
-              "path": ["api", "auth", "login"]
+              "path": ["api", "solicitudes", "mias"]
             },
-            "description": "Body completamente vacío.\n\n**Respuesta esperada (422)**"
+            "description": "Sin Authorization header. Debe responder HTTP 401."
           },
-          "response": []
-        },
-        {
-          "name": "POST Login — Secretaria ",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const r = pm.response.json();", "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Rol es SECRETARIA', () => pm.expect(r.datos.rol).to.eql('SECRETARIA'));", "if (r.datos?.token) { pm.collectionVariables.set('token', r.datos.token); console.log(' Token SECRETARIA guardado'); }"] } }],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email_institucional\": \"secretaria@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] },
-            "description": "Autentica a una secretaria.\n\n**Permisos SECRETARIA:**\n-  Ver todas las solicitudes\n-  Aprobar / Rechazar / Observar solicitudes\n-  Ver reportes\n-  NO puede crear solicitudes\n-  NO puede gestionar usuarios"
-          },
-          "response": [{ "name": " Login Secretaria exitoso", "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Ana Maria Rodriguez. Sesión iniciada correctamente\",\n  \"datos\": { \"token\": \"eyJ...\", \"id_usuario\": 4, \"nombre_completo\": \"Ana Maria Rodriguez\", \"rol\": \"SECRETARIA\", \"expira_en\": \"2h\" },\n  \"codigo_estado\": 200\n}" }]
-        },
-        {
-          "name": "POST Login — Admin ",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["const r = pm.response.json();", "pm.test('Status 200', () => pm.response.to.have.status(200));", "pm.test('Rol es ADMIN', () => pm.expect(r.datos.rol).to.eql('ADMIN'));", "if (r.datos?.token) { pm.collectionVariables.set('token', r.datos.token); console.log(' Token ADMIN guardado'); }"] } }],
-          "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"email_institucional\": \"admin@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}", "options": { "raw": { "language": "json" } } },
-            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] },
-            "description": "Autentica al administrador.\n\n**Permisos ADMIN (acceso total):**\n-  Todo lo de SECRETARIA\n-  Gestionar estudiantes y usuarios\n-  Crear / desactivar secretarias"
-          },
-          "response": [{ "name": " Login Admin exitoso", "status": "OK", "code": 200, "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Administrador del Sistema. Sesión iniciada correctamente\",\n  \"datos\": { \"token\": \"eyJ...\", \"id_usuario\": 5, \"nombre_completo\": \"Administrador del Sistema\", \"rol\": \"ADMIN\", \"expira_en\": \"2h\" },\n  \"codigo_estado\": 200\n}" }]
+          "response": [
+            {
+              "name": "401 — Sin token",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Token de autenticacion no proporcionado\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}"
+            }
+          ]
         }
       ]
     }

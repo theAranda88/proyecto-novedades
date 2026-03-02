@@ -7,6 +7,7 @@ import helmet                     from 'helmet';
 import rateLimit                  from 'express-rate-limit';
 import dotenv                     from 'dotenv';
 import enrutadorAuth              from './routes/authRoutes';
+import enrutadorSolicitudes       from './routes/solicitudRoutes';
 import { manejadorErroresGlobal } from './middlewares/errorHandler';
 import { configurarSwagger }      from './config/swagger';
 
@@ -120,6 +121,11 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/auth/login', limitadorLogin);
 app.use('/api/auth',       enrutadorAuth);
+
+// ------------------------------------------------------------
+// RUTAS PROTEGIDAS (requieren JWT válido + primer_login = FALSE)
+// ------------------------------------------------------------
+app.use('/api/solicitudes', enrutadorSolicitudes);
 
 // ------------------------------------------------------------
 // RUTA NO ENCONTRADA — 404

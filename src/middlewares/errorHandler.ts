@@ -5,12 +5,8 @@ import { Request, Response, NextFunction } from 'express';
 import { RespuestaUtil }                    from '../utils/RespuestaUtil';
 
 /**
- * Clase de error de negocio personalizada para el sistema.
- * Permite lanzar errores controlados desde los servicios con
- * un código HTTP específico que el errorHandler usará en la respuesta.
- *
- * @example
- * throw new ErrorNegocio('El estudiante no tiene matrícula activa', 400);
+ * Error de negocio controlado. Se lanza desde los servicios
+ * con un código HTTP específico para el cliente.
  */
 export class ErrorNegocio extends Error {
   constructor(
@@ -23,8 +19,21 @@ export class ErrorNegocio extends Error {
 }
 
 /**
- * Clase de error de base de datos para el sistema.
- * Se usa en los repositorios cuando ocurre un fallo en las queries.
+ * Error de autenticación. Cubre 401 (sin token/inválido),
+ * 403 (expirado/primer_login) y 423 (cuenta bloqueada).
+ */
+export class ErrorAutenticacion extends Error {
+  constructor(
+    public readonly mensaje: string,
+    public readonly codigoHttp: 401 | 403 | 423 = 401,
+  ) {
+    super(mensaje);
+    this.name = 'ErrorAutenticacion';
+  }
+}
+
+/**
+ * Error de base de datos para fallos en queries SQL.
  */
 export class ErrorBaseDatos extends Error {
   constructor(public readonly mensaje: string) {
@@ -36,19 +45,8 @@ export class ErrorBaseDatos extends Error {
 
 /**
  * Middleware global de manejo de errores de Express.
- * Captura cualquier excepción no manejada que haya sido pasada
- * mediante next(error) desde controladores o servicios.
- * Usa RespuestaUtil para devolver siempre el formato estándar.
- *
- * Tipos de error manejados:
- * - ErrorNegocio    → usa el codigoHttp definido en el error
- * - ErrorBaseDatos  → responde HTTP 500
- * - Error genérico  → responde HTTP 500 con mensaje genérico en producción
- *
- * @param error   - El error capturado
- * @param req     - Objeto Request de Express
- * @param res     - Objeto Response de Express
- * @param next    - Función next (requerida por Express para reconocer el middleware)
+ * Captura cualquier excepción pasada via next(error).
+ * Siempre responde usando el formato estándar de RespuestaUtil.
  */
 export const manejadorErroresGlobal = (
   error: Error,
@@ -60,19 +58,21 @@ export const manejadorErroresGlobal = (
   console.error(`[ERROR] ${new Date().toISOString()} — ${req.method} ${req.path}`);
   console.error(error);
 
-  // Error de negocio controlado lanzado desde los servicios
   if (error instanceof ErrorNegocio) {
     RespuestaUtil.error(res, error.mensaje, error.codigoHttp);
     return;
   }
 
-  // Error de base de datos
+  if (error instanceof ErrorAutenticacion) {
+    RespuestaUtil.error(res, error.mensaje, error.codigoHttp);
+    return;
+  }
+
   if (error instanceof ErrorBaseDatos) {
     RespuestaUtil.error(res, 'Error interno al acceder a la base de datos', 500);
     return;
   }
 
-  // Error genérico no controlado — ocultar detalles en producción
   const mensajePublico =
     process.env.NODE_ENV === 'production'
       ? 'Ha ocurrido un error interno en el servidor'
@@ -80,4 +80,3 @@ export const manejadorErroresGlobal = (
 
   RespuestaUtil.error(res, mensajePublico, 500);
 };
-

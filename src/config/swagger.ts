@@ -16,39 +16,47 @@ const opcionesSwaggerJSDoc: swaggerJSDoc.Options = {
     info: {
       title:       'Proyecto Novedades — API',
       version:     '1.0.0',
-      description: `Sistema de gestión de novedades académicas (Adición, Cambio de Jornada y Curso Dirigido).
+      description: `Sistema de gestión de novedades académicas — Proyecto Novedades (HU_DB v1.0).
 
 **Stack:** Node.js · Express · TypeScript · PostgreSQL
 
-**Autenticación:** Bearer JWT — Ejecuta \`POST /api/auth/login\` para obtener el token, luego haz clic en el botón  **Authorize** e ingresa: \`Bearer <tu_token>\`
+**Autenticación:** Bearer JWT — Ejecuta \`POST /api/auth/login\` para obtener el token, luego haz clic en **Authorize** e ingresa: \`Bearer <tu_token>\`
 
 ---
 
-###  Roles del sistema
+### Roles del sistema
 
 | Rol | Descripción |
 |---|---|
-| **ESTUDIANTE** | Radica solicitudes de novedad. Requiere matrícula activa |
-| **SECRETARIA** | Atiende, aprueba o rechaza solicitudes. Agrega observaciones |
-| **ADMIN** | Acceso total + gestión de usuarios y secretarias |
+| **estudiante** | Radica solicitudes de novedad. Requiere matricula_activa = TRUE |
+| **secretaria** | Atiende, aprueba o rechaza solicitudes |
+| **admin** | Acceso total + gestión de usuarios |
 
 ---
 
-###  Validaciones del sistema (ejecutadas al crear solicitudes)
+### Flujo de autenticación (HU_001)
 
-Las siguientes reglas se validan automáticamente **en la BD via triggers** y en la capa de servicios:
-
-1. **Matrícula activa** — El estudiante debe tener \`matricula_activa = TRUE\`
-2. **Límite de solicitudes** — Máximo **3 solicitudes** por periodo académico
-3. **Repitencias** — Máximo **2 reprobaciones** por curso (bloquea adición)
-4. **Cupos disponibles** — La sección destino debe tener \`cupos_disponibles > 0\`
-5. **Cruce de horario** — No puede haber solapamiento de horario con otras secciones
+1. \`POST /api/auth/login\` con \`codigo_estudiantil\` + \`password\`
+2. Si \`primer_login = true\`: usar el token en \`POST /api/auth/change-password\` para cambiar contraseña temporal
+3. Si \`primer_login = false\`: usar el token en todos los demás endpoints
 
 ---
 
-###  Formato de respuesta uniforme
+### Motor de validaciones (HU_DB §5)
 
-Todos los endpoints devuelven:
+Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`validacion_json\`:
+
+| Tipo | Validaciones |
+|---|---|
+| **adicion_curso** | Créditos max, cupos, cruce horario, no aprobada previa |
+| **cambio_curso** | Inscripción activa, no reprobada, estado_academico, cupos, cruce horario |
+| **cambio_jornada** | Jornada diferente, grupos con cupos en nueva jornada |
+| **curso_dirigido** | Reprobada previa, numero_intentos ≥ 1, estado_academico |
+
+---
+
+### Formato de respuesta uniforme
+
 \`\`\`json
 {
   "ok": true | false,
@@ -102,33 +110,105 @@ Todos los endpoints devuelven:
             codigo_estado: { type: 'integer', example: 400 },
           },
         },
-        //  ACTUALIZADO — refleja la respuesta real del ServicioAutenticacion
         TokenRespuesta: {
           type: 'object',
           properties: {
-            token:           { type: 'string',  example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
-            id_usuario:      { type: 'integer', example: 1 },
-            nombre_completo: { type: 'string',  example: 'Carlos Andres Perez Lopez' },
-            rol:             { type: 'string',  enum: ['ESTUDIANTE', 'SECRETARIA', 'ADMIN'], example: 'ESTUDIANTE' },
-            expira_en:       { type: 'string',  example: '2h' },
+            token:              { type: 'string',  example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' },
+            id_usuario:         { type: 'integer', example: 3 },
+            nombre_completo:    { type: 'string',  example: 'Carlos Andres Perez Lopez' },
+            rol:                { type: 'string',  enum: ['estudiante', 'secretaria', 'admin'], example: 'estudiante' },
+            primer_login:       { type: 'boolean', example: false, description: 'Si true debe ir a /change-password' },
+            codigo_estudiantil: { type: 'string',  example: '2024001' },
+            expira_en:          { type: 'string',  example: '8h' },
           },
         },
         LoginBody: {
           type: 'object',
-          required: ['email_institucional', 'password'],
+          required: ['codigo_estudiantil', 'password'],
           properties: {
-            email_institucional: {
+            codigo_estudiantil: {
               type:        'string',
-              format:      'email',
-              example:     'c.perez@proyectonovedades.edu.co',
-              description: 'Correo electrónico institucional (aplica para ESTUDIANTE, SECRETARIA y ADMIN)',
+              example:     '2024001',
+              description: 'Código estudiantil institucional',
             },
             password: {
               type:        'string',
               format:      'password',
-              minLength:   6,
+              minLength:   8,
               example:     'Password123',
-              description: 'Contraseña del usuario (mínimo 6 caracteres)',
+              description: 'Contraseña del usuario (mínimo 8 caracteres)',
+            },
+          },
+        },
+        CambioPasswordBody: {
+          type: 'object',
+          required: ['password_actual', 'password_nueva'],
+          properties: {
+            password_actual: {
+              type:      'string',
+              format:    'password',
+              example:   'Password123',
+              description: 'Contraseña temporal asignada por el admin',
+            },
+            password_nueva: {
+              type:      'string',
+              format:    'password',
+              example:   'NuevaContrasena456',
+              description: 'Nueva contraseña (mín. 8 chars, 1 número, 1 letra)',
+            },
+          },
+        },
+        ValidacionJson: {
+          type: 'object',
+          properties: {
+            timestamp:      { type: 'string', format: 'date-time' },
+            tipo_solicitud: { type: 'string' },
+            aprobado:       { type: 'boolean' },
+            validaciones: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  nombre:    { type: 'string' },
+                  resultado: { type: 'boolean' },
+                  detalle:   { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        CrearSolicitudBody: {
+          type: 'object',
+          required: ['tipo_solicitud', 'justificacion', 'periodo_academico'],
+          properties: {
+            tipo_solicitud: {
+              type: 'string',
+              enum: ['cambio_curso', 'cambio_jornada', 'curso_dirigido', 'adicion_curso'],
+            },
+            grupo_actual_id: { type: 'integer', example: 3 },
+            grupo_nuevo_id:  { type: 'integer', example: 4 },
+            jornada_actual:  { type: 'string', enum: ['manana','tarde','noche'] },
+            jornada_nueva:   { type: 'string', enum: ['manana','tarde','noche'] },
+            justificacion: {
+              type:      'string',
+              minLength: 50,
+              example:   'Solicito adición del curso porque complementa mi formación y tengo disponibilidad horaria.',
+            },
+            periodo_academico: { type: 'string', example: '2026-1' },
+          },
+        },
+        ActualizarEstadoBody: {
+          type: 'object',
+          required: ['estado'],
+          properties: {
+            estado: {
+              type: 'string',
+              enum: ['en_revision', 'aprobada', 'rechazada'],
+            },
+            observaciones: {
+              type:      'string',
+              maxLength: 1000,
+              example:   'Solicitud válida. Se procede con la adición del curso.',
             },
           },
         },
@@ -161,47 +241,46 @@ Todos los endpoints devuelven:
     // Agrupación de endpoints por módulo
     tags: [
       {
-        name:        ' Health',
-        description: 'Estado y disponibilidad del servidor. Rutas públicas.',
+        name:        'Health',
+        description: 'Estado y disponibilidad del servidor. Ruta pública sin autenticación.',
       },
       {
-        name:        ' Autenticación',
-        description: `Endpoints de inicio de sesión y gestión de tokens JWT.
+        name:        'Autenticacion',
+        description: `Endpoints de inicio de sesión y gestión de tokens JWT. **Rutas públicas — no requieren token.**
 
-**Rutas públicas — no requieren token.**
-
-**Usuarios de prueba:**
-| Email | Contraseña | Rol | Estado |
+**Usuarios de prueba (codigo_estudiantil / contraseña):**
+| Código | Contraseña | Rol | Estado |
 |---|---|---|---|
-| c.perez@proyectonovedades.edu.co | Password123 | ESTUDIANTE |  activo |
-| l.gomez@proyectonovedades.edu.co | Password123 | ESTUDIANTE |  activo |
-| m.torres@proyectonovedades.edu.co | Password123 | ESTUDIANTE |  matrícula inactiva |
-| secretaria@proyectonovedades.edu.co | Password123 | SECRETARIA |  activo |
-| admin@proyectonovedades.edu.co | Password123 | ADMIN |  activo |`,
+| 2024001 | Password123 | estudiante | activo |
+| 2024002 | Password123 | estudiante | activo |
+| 2023010 | Password123 | estudiante | matricula inactiva |
+| SEC001  | Password123 | secretaria | activo |
+| ADMIN001| Password123 | admin      | activo |`,
       },
       {
         name:        'Solicitudes',
-        description: `Gestión de novedades académicas (Adición, Cambio de Jornada, Curso Dirigido).
+        description: `Gestión de novedades académicas según HU_DB §5.
 
 **Acceso por rol:**
--  **ESTUDIANTE** — Crea y consulta sus propias solicitudes
--  **SECRETARIA** — Ve todas las solicitudes, aprueba/rechaza/observa
--  **ADMIN** — Acceso total
+- **estudiante** — Crea y consulta sus propias solicitudes
+- **secretaria** — Ve todas, aprueba/rechaza/observa
+- **admin** — Acceso total
 
-**Validaciones ejecutadas al crear una solicitud (en orden):**
-1.  Matrícula activa del estudiante
-2.  Máximo 3 solicitudes por periodo académico
-3.  Límite de repitencias (máx. 2 reprobaciones por curso)
-4.  Cupos disponibles en la sección destino
-5.  Sin cruce de horario con secciones ya registradas`,
+**Validaciones automáticas (motor de validaciones HU_DB §5):**
+- **CAMBIO_CURSO**: inscripción activa, estado no reprobada, estado_academico normal, cupos, cruce horario
+- **CAMBIO_JORNADA**: jornada diferente, grupos con cupos en nueva jornada
+- **ADICION_CURSO**: creditos_max, cupos, cruce horario, materia no aprobada previamente
+- **CURSO_DIRIGIDO**: reprobada previa, numero_intentos >= 1, estado_academico habilitado
+
+El campo \`validacion_json\` registra el snapshot de cada chequeo ejecutado.`,
       },
       {
-        name:        ' Estudiantes',
-        description: 'Consulta y gestión de datos académicos de estudiantes. Solo **ADMIN**.',
+        name:        'Estudiantes',
+        description: 'Consulta y gestión de datos académicos de estudiantes. Solo **admin**.',
       },
       {
-        name:        ' Usuarios',
-        description: 'Gestión de usuarios del sistema (crear secretarias, activar/desactivar). Solo **ADMIN**.',
+        name:        'Usuarios',
+        description: 'Gestión de usuarios del sistema (crear secretarias, activar/desactivar). Solo **admin**.',
       },
     ],
   },
