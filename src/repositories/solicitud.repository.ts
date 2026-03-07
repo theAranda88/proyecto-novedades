@@ -282,34 +282,37 @@ export class RepositorioSolicitud {
       );
       const codigoSolicitud = `REQ-${anio}-${String(siguiente).padStart(3, '0')}`;
 
-      // Mapear tipo_solicitud al formato del CHECK constraint original si aplica
-      // La tabla tiene: ADICION, CAMBIO_JORNADA, CURSO_DIRIGIDO + nuevos (sin restricción)
-      const tipoMapeado = datos.tipoSolicitud;
+      // Mapear tipo_solicitud interno → valor del CHECK constraint de BD
+      const mapaTipos: Record<string, string> = {
+        adicion_curso:  'ADICION_CURSO',
+        cambio_curso:   'CAMBIO_CURSO',
+        cambio_jornada: 'CAMBIO_JORNADA',
+        curso_dirigido: 'CURSO_DIRIGIDO',
+      };
+      const tipoMapeado = mapaTipos[datos.tipoSolicitud] ?? datos.tipoSolicitud.toUpperCase();
 
-      // Buscar id_seccion_destino desde el grupo_nuevo_id si aplica
-      let idSeccionDestino = 1; // fallback — la columna es NOT NULL en el esquema original
-      if (datos.grupoNuevoId) {
-        // Intentar mapear grupos_curso.id → secciones.id_seccion por compatibilidad
-        idSeccionDestino = datos.grupoNuevoId;
-      }
+      // Descripción del motivo para la columna motivo_novedad
+      const motivoDescripcion = `${tipoMapeado} - Periodo ${datos.periodoAcademico}`;
 
       const resultado = await pool.query<FilaSolicitud>(
         `INSERT INTO solicitudes
-            (cod_alumno, tipo_novedad, id_seccion_destino, id_seccion_origen,
+            (cod_alumno, tipo_novedad,
+             id_seccion_destino, id_seccion_origen,
+             grupo_nuevo_id, grupo_actual_id,
              motivo_novedad, justificacion_detallada,
              periodo_academico, estado_solicitud,
              codigo_solicitud, validacion_json, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'PENDIENTE', $8, $9, $10)
+         VALUES ($1, $2, NULL, NULL, $3, $4, $5, $6, $7, 'PENDIENTE', $8, $9, $10)
          RETURNING id_solicitud AS id, codigo_solicitud,
                    estado_solicitud AS estado,
                    tipo_novedad     AS tipo_solicitud,
                    validacion_json, fecha_creacion AS created_at`,
         [
           datos.codAlumno,
-          tipoMapeado.toUpperCase().replace('ADICION_CURSO','ADICION').replace('CAMBIO_CURSO','CAMBIO_JORNADA'),
-          idSeccionDestino,
+          tipoMapeado,
+          datos.grupoNuevoId,
           datos.grupoActualId,
-          `${datos.tipoSolicitud} - periodo ${datos.periodoAcademico}`,
+          motivoDescripcion,
           datos.justificacion,
           datos.periodoAcademico,
           codigoSolicitud,

@@ -957,6 +957,275 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Formulario de Solicitud (HU)",
+      "description": "Endpoints para soportar el Formulario de Solicitud Academica.\n\n**Flujo del formulario:**\n1. `GET /api/estudiantes/perfil` → Pre-cargar nombre, codigo, programa, semestre\n2. `GET /api/grupos?periodo=2026-1` → Poblar dropdowns de grupos\n3. `POST /api/solicitudes` → Enviar la solicitud (con adjunto Base64 opcional)\n4. `POST /api/estudiantes/solicitudes/:id/adjunto` → Subir adjunto por separado si aplica\n\n**Todos los endpoints requieren token de ESTUDIANTE.**",
+      "item": [
+        {
+          "name": "GET Perfil Academico (pre-carga formulario)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Tiene cod_alumno', () => pm.expect(r.datos).to.have.property('cod_alumno'));",
+                  "pm.test('Tiene nombre_programa', () => pm.expect(r.datos).to.have.property('nombre_programa'));",
+                  "pm.test('Tiene semestre', () => pm.expect(r.datos).to.have.property('semestre'));",
+                  "pm.test('Tiene matricula_activa', () => pm.expect(r.datos).to.have.property('matricula_activa'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/estudiantes/perfil",
+              "host": ["{{base_url}}"],
+              "path": ["api", "estudiantes", "perfil"]
+            },
+            "description": "Devuelve el perfil academico del estudiante autenticado para pre-cargar la seccion 'Informacion Academica' del formulario.\n\n**Campos devueltos:**\n- `cod_alumno` → 'Codigo Estudiantil'\n- `nombre_completo` → 'Nombre Completo'\n- `nombre_programa` → 'Programa Academico'\n- `semestre` → 'Semestre Actual'\n- `jornada`, `creditos_inscritos`, `estado_academico`\n\n**Requiere:** Token de ESTUDIANTE"
+          },
+          "response": [
+            {
+              "name": "200 — Perfil cargado",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Perfil academico obtenido exitosamente\",\n  \"datos\": {\n    \"cod_alumno\": \"2024001\",\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"email_institucional\": \"c.perez@proyectonovedades.edu.co\",\n    \"semestre\": 5,\n    \"nombre_programa\": \"Ingenieria de Sistemas\",\n    \"jornada\": \"manana\",\n    \"creditos_inscritos\": 9,\n    \"creditos_max_permitidos\": 20,\n    \"estado_academico\": \"normal\",\n    \"matricula_activa\": true\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "404 — Sin perfil academico",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"No se encontro el perfil academico. Contacte a la secretaria para vincular su cuenta.\",\n  \"datos\": null,\n  \"codigo_estado\": 404\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Grupos Disponibles — Todos (dropdown)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('datos es un array', () => pm.expect(r.datos).to.be.an('array'));",
+                  "if (r.datos.length > 0) {",
+                  "  pm.test('Cada grupo tiene id y nombre_curso', () => {",
+                  "    pm.expect(r.datos[0]).to.have.property('id');",
+                  "    pm.expect(r.datos[0]).to.have.property('nombre_curso');",
+                  "    pm.expect(r.datos[0]).to.have.property('cupos_disponibles');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/grupos?periodo=2026-1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grupos"],
+              "query": [
+                { "key": "periodo", "value": "2026-1", "description": "Periodo academico (requerido)" },
+                { "key": "curso_id", "value": "", "description": "Filtrar por ID de curso (opcional)", "disabled": true },
+                { "key": "jornada", "value": "", "description": "Filtrar por jornada: manana/tarde/noche (opcional)", "disabled": true }
+              ]
+            },
+            "description": "Lista todos los grupos disponibles (cupos > 0) para el periodo 2026-1.\nUsar para poblar el dropdown 'Tipo de Solicitud' y los campos dinamicos del formulario.\n\n**Filtros opcionales:**\n- `curso_id` — Solo grupos de ese curso\n- `jornada` — Solo grupos de esa jornada"
+          },
+          "response": [
+            {
+              "name": "200 — Lista de grupos",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"8 grupo(s) disponible(s) para el periodo 2026-1\",\n  \"datos\": [\n    {\n      \"id\": 1,\n      \"codigo_grupo\": \"G-01\",\n      \"nombre_curso\": \"Calculo Diferencial\",\n      \"cod_curso\": \"MAT101\",\n      \"jornada\": \"manana\",\n      \"dia_semana\": \"lunes\",\n      \"hora_inicio\": \"07:00:00\",\n      \"hora_fin\": \"09:00:00\",\n      \"docente\": \"Dr. Ramon Suarez\",\n      \"aula\": \"Aula-201\",\n      \"cupo_maximo\": 35,\n      \"cupos_ocupados\": 9,\n      \"cupos_disponibles\": 26,\n      \"periodo\": \"2026-1\"\n    }\n  ],\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "400 — Periodo faltante",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El parametro \\\"periodo\\\" es obligatorio. Ej: ?periodo=2026-1\",\n  \"datos\": null,\n  \"codigo_estado\": 400\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Grupos — Filtrado por curso_id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/grupos?periodo=2026-1&curso_id=1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "grupos"],
+              "query": [
+                { "key": "periodo", "value": "2026-1" },
+                { "key": "curso_id", "value": "1", "description": "ID del curso MAT101" }
+              ]
+            },
+            "description": "Lista grupos de un curso especifico. Usar cuando el estudiante selecciona 'Cambio de Curso' para mostrar solo los grupos de esa materia."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Enviar Solicitud CON adjunto Base64",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 201 — Solicitud creada', () => pm.response.to.have.status(201));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Mensaje de confirmacion correcto', () => pm.expect(r.mensaje).to.include('Solicitud enviada correctamente'));",
+                  "pm.test('Tiene codigo_solicitud', () => pm.expect(r.datos).to.have.property('codigo_solicitud'));",
+                  "pm.test('Tiene validacion_json', () => pm.expect(r.datos).to.have.property('validacion_json'));",
+                  "if (r.datos && r.datos.id) {",
+                  "  pm.collectionVariables.set('solicitud_id', r.datos.id);",
+                  "  console.log('solicitud_id guardado:', r.datos.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito la adicion del curso Calculo Diferencial ya que complementa mi formacion academica actual y tengo disponibilidad horaria para asistir sin inconvenientes.\",\n  \"periodo_academico\": \"2026-1\",\n  \"nombre_adjunto\": \"Horario_Actual_2026.pdf\",\n  \"adjunto_base64\": \"data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPJ4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQo+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDQKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjE5MAolJUVPRgo=\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Crea una solicitud de adicion_curso e incluye un documento adjunto en Base64 (PDF minimo real).\n\n**El adjunto es opcional:** Si no se incluye `adjunto_base64` y `nombre_adjunto`, la solicitud se crea sin adjunto.\n\n**El mensaje de confirmacion es:** 'Solicitud enviada correctamente'\n\n**Requiere:** Token ESTUDIANTE con matricula_activa = true"
+          },
+          "response": [
+            {
+              "name": "201 — Solicitud enviada con adjunto",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud enviada correctamente. Quedara en revision por la secretaria academica\",\n  \"datos\": {\n    \"id\": 5,\n    \"codigo_solicitud\": \"REQ-2026-005\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"adicion_curso\",\n    \"validacion_json\": {\n      \"timestamp\": \"2026-03-07T10:30:00Z\",\n      \"tipo_solicitud\": \"adicion_curso\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"creditos_max_permitidos\", \"resultado\": true, \"detalle\": \"Creditos tras adicion: 12 / 20\" },\n        { \"nombre\": \"cupos_disponibles\", \"resultado\": true, \"detalle\": \"Cupos disponibles: 26\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruces detectados\" },\n        { \"nombre\": \"materia_no_aprobada_previamente\", \"resultado\": true, \"detalle\": \"Materia no aprobada previamente\" }\n      ]\n    },\n    \"adjunto\": {\n      \"id\": 1,\n      \"url\": \"/uploads/solicitudes/5/1709834521000_Horario_Actual_2026.pdf\",\n      \"nombre\": \"1709834521000_Horario_Actual_2026.pdf\"\n    }\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "422 — Validaciones fallidas",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Solicitud rechazada por validaciones: No hay cupos disponibles en el grupo seleccionado\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Enviar Solicitud SIN adjunto",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito la adicion del curso Calculo Diferencial ya que complementa mi formacion academica actual y tengo disponibilidad horaria para asistir sin inconvenientes.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Crea una solicitud sin documento adjunto. El campo `adjunto` en la respuesta sera null."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Subir Adjunto a solicitud existente",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 201 — Adjunto guardado', () => pm.response.to.have.status(201));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Tiene url del archivo', () => pm.expect(r.datos).to.have.property('url'));",
+                  "pm.test('Tiene id del documento', () => pm.expect(r.datos).to.have.property('id'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_archivo\": \"Certificado_Medico_2026.pdf\",\n  \"archivo_base64\": \"data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPJ4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQo+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDQKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjE5MAolJUVPRgo=\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/estudiantes/solicitudes/{{solicitud_id}}/adjunto",
+              "host": ["{{base_url}}"],
+              "path": ["api", "estudiantes", "solicitudes", "{{solicitud_id}}", "adjunto"]
+            },
+            "description": "Adjunta un documento a una solicitud ya creada.\n\n**Usa la variable `{{solicitud_id}}`** que se llena automaticamente al crear una solicitud.\n\n**Validaciones:**\n- Tipos permitidos: PDF, JPG, PNG\n- Tamano maximo: 5MB\n- El archivo se guarda en `/uploads/solicitudes/{id}/`\n\n**Requiere:** Token ESTUDIANTE"
+          },
+          "response": [
+            {
+              "name": "201 — Adjunto guardado",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Documento adjunto guardado correctamente\",\n  \"datos\": {\n    \"id\": 2,\n    \"url\": \"/uploads/solicitudes/1/1709834900000_Certificado_Medico_2026.pdf\",\n    \"nombre\": \"1709834900000_Certificado_Medico_2026.pdf\"\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "422 — Tipo no permitido",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Tipo de archivo no permitido. Se aceptan: PDF, JPG, PNG\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+            },
+            {
+              "name": "422 — Archivo supera 5MB",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El archivo supera el limite de 5MB. Tamano actual: 6.23MB\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

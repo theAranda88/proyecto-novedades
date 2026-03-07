@@ -212,6 +212,59 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
             },
           },
         },
+        // ─── Schema para adjunto de documentos en Base64 ─────────────────
+        AdjuntoBase64Body: {
+          type: 'object',
+          required: ['nombre_archivo', 'archivo_base64'],
+          properties: {
+            nombre_archivo: {
+              type:    'string',
+              example: 'Horario_Actual_2026.pdf',
+              description: 'Nombre original del archivo con extensión',
+            },
+            archivo_base64: {
+              type:    'string',
+              example: 'data:application/pdf;base64,JVBERi0xLjQ...',
+              description: 'Archivo codificado en Base64 con prefijo. Tipos: PDF, JPG, PNG. Máx: 5MB',
+            },
+          },
+        },
+        // ─── Schema para perfil académico del estudiante ──────────────────
+        PerfilEstudiante: {
+          type: 'object',
+          properties: {
+            cod_alumno:              { type: 'string',  example: '2023-1025043' },
+            nombre_completo:         { type: 'string',  example: 'Andrés Felipe Rodríguez' },
+            email_institucional:     { type: 'string',  example: 'a.rodriguez@proyectonovedades.edu.co' },
+            semestre:                { type: 'integer', example: 7 },
+            nombre_programa:         { type: 'string',  example: 'Ingeniería de Sistemas' },
+            jornada:                 { type: 'string',  enum: ['manana','tarde','noche'], example: 'manana' },
+            creditos_inscritos:      { type: 'integer', example: 9 },
+            creditos_max_permitidos: { type: 'integer', example: 20 },
+            estado_academico:        { type: 'string',  enum: ['normal','bajo_rendimiento','suspendido'], example: 'normal' },
+            matricula_activa:        { type: 'boolean', example: true },
+          },
+        },
+        // ─── Schema para grupo de curso en los dropdowns ──────────────────
+        GrupoCurso: {
+          type: 'object',
+          properties: {
+            id:                { type: 'integer', example: 1 },
+            codigo_grupo:      { type: 'string',  example: 'G-01' },
+            nombre_curso:      { type: 'string',  example: 'Cálculo Diferencial' },
+            cod_curso:         { type: 'string',  example: 'MAT101' },
+            jornada:           { type: 'string',  enum: ['manana','tarde','noche'], example: 'manana' },
+            dia_semana:        { type: 'string',  example: 'lunes' },
+            hora_inicio:       { type: 'string',  example: '07:00:00' },
+            hora_fin:          { type: 'string',  example: '09:00:00' },
+            docente:           { type: 'string',  example: 'Dr. Ramon Suarez' },
+            aula:              { type: 'string',  example: 'Aula-201', nullable: true },
+            cupo_maximo:       { type: 'integer', example: 35 },
+            cupos_ocupados:    { type: 'integer', example: 9 },
+            cupos_disponibles: { type: 'integer', example: 26 },
+            periodo:           { type: 'string',  example: '2026-1' },
+          },
+        },
         // ─── Schemas de dominio para las validaciones del sistema ───────────
         RolSistema: {
           type: 'string',
@@ -276,7 +329,16 @@ El campo \`validacion_json\` registra el snapshot de cada chequeo ejecutado.`,
       },
       {
         name:        'Estudiantes',
-        description: 'Consulta y gestión de datos académicos de estudiantes. Solo **admin**.',
+        description: `Endpoints del módulo estudiante para el formulario de solicitud.
+
+**GET /api/estudiantes/perfil** — Pre-carga automática de la sección "Información Académica":
+- nombre_completo, cod_alumno, nombre_programa, semestre, jornada
+
+**GET /api/grupos** — Dropdowns del formulario:
+- Lista grupos disponibles (cupos > 0) filtrados por periodo, curso_id o jornada
+
+**POST /api/estudiantes/solicitudes/:id/adjunto** — Adjuntar documento:
+- Acepta PDF, JPG, PNG en Base64. Máximo 5MB por archivo.`,
       },
       {
         name:        'Usuarios',

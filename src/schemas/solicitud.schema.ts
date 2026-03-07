@@ -3,6 +3,14 @@
 
 import { z } from 'zod';
 
+/** Prefijos Base64 permitidos para validar el tipo de archivo adjunto */
+const PREFIJOS_BASE64_VALIDOS = [
+  'data:application/pdf;base64,',
+  'data:image/jpeg;base64,',
+  'data:image/jpg;base64,',
+  'data:image/png;base64,',
+];
+
 /**
  * Esquema base para POST /api/solicitudes
  * Valida el tipo de solicitud y los campos requeridos según HU_DB §5.
@@ -42,6 +50,29 @@ export const esquemaSolicitud = z.object({
   periodo_academico: z
     .string({ error: 'El periodo académico es obligatorio' })
     .regex(/^\d{4}-[1-3]$/, 'Formato inválido. Use: AAAA-N (ej: 2026-1)'),
+
+  /**
+   * Archivo adjunto opcional en Base64.
+   * El front convierte el archivo con FileReader.readAsDataURL() y envía el resultado.
+   * Debe incluir el prefijo: data:application/pdf;base64,... / data:image/jpeg;base64,...
+   * La validación de tamaño máximo (5MB) se realiza en el service.
+   */
+  adjunto_base64: z
+    .string()
+    .refine(
+      (val) => PREFIJOS_BASE64_VALIDOS.some((prefijo) => val.startsWith(prefijo)),
+      { message: 'El adjunto debe ser PDF, JPG o PNG en formato Base64 (data:tipo;base64,...)' },
+    )
+    .optional(),
+
+  /**
+   * Nombre original del archivo adjunto (ej: "Horario_2026.pdf").
+   * Requerido si se envía adjunto_base64.
+   */
+  nombre_adjunto: z
+    .string()
+    .max(255, 'El nombre del archivo no puede superar 255 caracteres')
+    .optional(),
 }).refine(
   (datos) => {
     // CAMBIO_CURSO y ADICION_CURSO requieren grupo_nuevo_id
@@ -61,6 +92,18 @@ export const esquemaSolicitud = z.object({
   {
     message: 'Faltan campos requeridos para el tipo de solicitud seleccionado',
     path:    ['tipo_solicitud'],
+  },
+).refine(
+  (datos) => {
+    // Si se envía adjunto_base64, nombre_adjunto es obligatorio
+    if (datos.adjunto_base64 && !datos.nombre_adjunto) {
+      return false;
+    }
+    return true;
+  },
+  {
+    message: 'El campo "nombre_adjunto" es obligatorio cuando se adjunta un archivo',
+    path:    ['nombre_adjunto'],
   },
 );
 

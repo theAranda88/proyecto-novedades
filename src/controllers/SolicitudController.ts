@@ -3,6 +3,7 @@
 
 import { Request, Response, NextFunction } from 'express';
 import { ServicioSolicitud }                from '../services/SolicitudService';
+import { ServicioEstudiante }               from '../services/EstudianteService';
 import { RepositorioUsuario }               from '../repositories/usuario.repository';
 import { RespuestaUtil }                    from '../utils/RespuestaUtil';
 import { TDatosSolicitud, TActualizarEstado } from '../schemas/solicitud.schema';
@@ -12,10 +13,12 @@ import { pool }                             from '../config/database';
 export class ControladorSolicitud {
 
   private readonly servicioSolicitud: ServicioSolicitud;
+  private readonly servicioEstudiante: ServicioEstudiante;
   private readonly repoUsuario:       RepositorioUsuario;
 
   constructor() {
     this.servicioSolicitud   = new ServicioSolicitud();
+    this.servicioEstudiante  = new ServicioEstudiante();
     this.repoUsuario         = new RepositorioUsuario();
     this.crear               = this.crear.bind(this);
     this.listarMias          = this.listarMias.bind(this);
@@ -28,6 +31,9 @@ export class ControladorSolicitud {
    * Crea una nueva solicitud de novedad tras ejecutar todas las
    * validaciones del motor (HU_DB §5). Solo ESTUDIANTE puede crearlas.
    * El validacion_json se genera y persiste automáticamente.
+   *
+   * Si el body incluye `adjunto_base64` y `nombre_adjunto`, el sistema
+   * procesa el archivo (PDF/JPG/PNG máx 5MB) y lo asocia a la solicitud.
    *
    * @acceso ESTUDIANTE
    */
@@ -44,12 +50,23 @@ export class ControladorSolicitud {
         usuario.id_usuario,
         estudianteSeq,
         codAlumno,
-      );
+      ) as { id: number; [key: string]: unknown };
+
+      // Procesar adjunto Base64 si viene en el body (opcional)
+      let adjunto: object | null = null;
+      if (datos.adjunto_base64 && datos.nombre_adjunto) {
+        adjunto = await this.servicioEstudiante.procesarAdjunto(
+          solicitud.id,
+          datos.nombre_adjunto,
+          datos.adjunto_base64,
+          usuario.id_usuario,
+        );
+      }
 
       RespuestaUtil.exito(
         res,
-        'Solicitud de novedad registrada exitosamente. Quedará en revisión por la secretaria académica',
-        solicitud,
+        'Solicitud enviada correctamente. Quedará en revisión por la secretaría académica',
+        { ...solicitud, adjunto },
         201,
       );
     } catch (error) {

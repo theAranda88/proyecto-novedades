@@ -5,9 +5,12 @@ import express                    from 'express';
 import cors                       from 'cors';
 import helmet                     from 'helmet';
 import rateLimit                  from 'express-rate-limit';
+import path                       from 'path';
 import dotenv                     from 'dotenv';
 import enrutadorAuth              from './routes/authRoutes';
 import enrutadorSolicitudes       from './routes/solicitudRoutes';
+import enrutadorEstudiante        from './routes/estudianteRoutes';
+import enrutadorGrupos            from './routes/grupoRoutes';
 import { manejadorErroresGlobal } from './middlewares/errorHandler';
 import { configurarSwagger }      from './config/swagger';
 
@@ -55,9 +58,24 @@ app.use(cors({
 }));
 
 // ------------------------------------------------------------
-// PARSEO — Limita el tamaño del body a 1MB
+// PARSEO — Límite 10MB para soportar archivos Base64 en adjuntos
+// Un archivo de 5MB en Base64 ocupa ~6.8MB en el body JSON
 // ------------------------------------------------------------
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ------------------------------------------------------------
+// ARCHIVOS ESTÁTICOS — Servir documentos adjuntos subidos
+// GET /uploads/solicitudes/:id/:archivo → devuelve el archivo
+// ------------------------------------------------------------
+app.use(
+  '/uploads',
+  express.static(path.join(process.cwd(), 'uploads'), {
+    maxAge:      '1d',
+    dotfiles:    'deny',
+    fallthrough: false,
+  }),
+);
 
 // ------------------------------------------------------------
 // SWAGGER UI — Documentación interactiva en /api/docs
@@ -125,7 +143,9 @@ app.use('/api/auth',       enrutadorAuth);
 // ------------------------------------------------------------
 // RUTAS PROTEGIDAS (requieren JWT válido + primer_login = FALSE)
 // ------------------------------------------------------------
-app.use('/api/solicitudes', enrutadorSolicitudes);
+app.use('/api/solicitudes',  enrutadorSolicitudes);
+app.use('/api/estudiantes',  enrutadorEstudiante);
+app.use('/api/grupos',       enrutadorGrupos);
 
 // ------------------------------------------------------------
 // RUTA NO ENCONTRADA — 404

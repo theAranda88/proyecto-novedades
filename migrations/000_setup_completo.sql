@@ -1,20 +1,42 @@
 -- =============================================================================
---  SETUP COMPLETO — Proyecto Novedades v2.0
---  Ejecutar UNA SOLA VEZ en una BD nueva para dejar el sistema listo.
+--  SETUP COMPLETO — Proyecto Novedades v3.0
+--  Fecha: 2026-03-07
 --
---  PREREQUISITO: Tener creada la BD vacía:
---    CREATE DATABASE proyecto_novedades;
+--  DESCRIPCIÓN:
+--    Script único para crear la BD desde CERO en un nuevo entorno.
+--    Incluye TODO lo aplicado hasta la migración 005 (estado actual del sistema).
+--    NO es necesario ejecutar las migraciones 001-005 si se usa este script.
 --
---  EJECUCION:
---    psql -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
+--  PREREQUISITO:
+--    Crear la BD vacía en PostgreSQL antes de ejecutar:
+--      CREATE DATABASE proyecto_novedades;
 --
---  RESULTADO: BD con tablas + datos seed listos para usar con:
---    codigo_estudiantil | password       | rol
---    2024001            | Password123    | estudiante  (matricula activa)
---    2024002            | Password123    | estudiante  (matricula activa)
---    2023010            | Password123    | estudiante  (matricula INACTIVA)
---    SEC001             | Password123    | secretaria
---    ADMIN001           | Password123    | admin
+--  EJECUCIÓN (Windows — PowerShell):
+--    $env:PGPASSWORD="tu_password"
+--    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
+--
+--  EJECUCIÓN (Linux / Mac):
+--    PGPASSWORD=tu_password psql -h localhost -p 5432 -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
+--
+--  RESULTADO: BD lista con tablas + seed de datos para pruebas:
+--    codigo_estudiantil | password    | rol        | estado
+--    2024001            | Password123 | estudiante | matricula activa
+--    2024002            | Password123 | estudiante | matricula activa (MAT101 reprobada)
+--    2023010            | Password123 | estudiante | matricula INACTIVA
+--    SEC001             | Password123 | secretaria | activo
+--    ADMIN001           | Password123 | admin      | activo
+--
+--  MIGRACIONES INCLUIDAS EN ESTE SCRIPT:
+--    ✔ 000 — Esquema base + seed
+--    ✔ 001 — password_hash en usuarios
+--    ✔ 002 — Seed de contraseñas
+--    ✔ 003 — Tabla usuarios con roles
+--    ✔ 004 — Esquema HU_DB (grupos_curso, historial_v2, inscripciones_activas, etc.)
+--    ✔ 005 — Fix constraints solicitudes (tipo_novedad, estado, grupo_nuevo_id)
+--
+--  PARA ENTORNOS EXISTENTES (colaborador que ya tiene la BD):
+--    Solo ejecutar las migraciones faltantes en orden:
+--      psql ... -f migrations/005_fix_constraints_solicitudes.sql
 -- =============================================================================
 
 BEGIN;
@@ -180,23 +202,49 @@ CREATE TABLE IF NOT EXISTS solicitudes (
     id_solicitud            BIGINT       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     cod_alumno              VARCHAR(20)  NOT NULL REFERENCES estudiantes(cod_alumno)
                                 ON UPDATE CASCADE ON DELETE RESTRICT,
-    -- tipo_novedad: ADICION_CURSO | CAMBIO_CURSO | CAMBIO_JORNADA | CURSO_DIRIGIDO
-    tipo_novedad            VARCHAR(30)  NOT NULL,
-    -- id_seccion_destino/origen mapean al id de grupos_curso
+
+    -- tipo_novedad: valores válidos del CHECK constraint
+    tipo_novedad            VARCHAR(30)  NOT NULL
+                                CHECK (tipo_novedad IN (
+                                    'ADICION_CURSO',
+                                    'CAMBIO_CURSO',
+                                    'CAMBIO_JORNADA',
+                                    'CURSO_DIRIGIDO'
+                                )),
+
+    -- Referencia al grupo destino y origen (tabla grupos_curso)
+    -- Reemplaza las antiguas FK a tabla secciones
+    grupo_nuevo_id          INT          NULL REFERENCES grupos_curso(id)
+                                ON UPDATE CASCADE ON DELETE SET NULL,
+    grupo_actual_id         INT          NULL REFERENCES grupos_curso(id)
+                                ON UPDATE CASCADE ON DELETE SET NULL,
+
+    -- Compatibilidad con esquema original (nullable, sin FK)
     id_seccion_destino      INT          NULL,
     id_seccion_origen       INT          NULL,
-    -- motivo_novedad: texto libre o etiqueta del tipo. Permite valor vacío.
+
     motivo_novedad          TEXT         NOT NULL DEFAULT '',
     justificacion_detallada TEXT         NULL,
     adjunto_recibo_pago     TEXT         NULL,
+
     -- estado: PENDIENTE | EN_REVISION | APROBADA | RECHAZADA
-    estado_solicitud        VARCHAR(20)  NOT NULL DEFAULT 'PENDIENTE',
+    estado_solicitud        VARCHAR(20)  NOT NULL DEFAULT 'PENDIENTE'
+                                CHECK (estado_solicitud IN (
+                                    'PENDIENTE',
+                                    'EN_REVISION',
+                                    'APROBADA',
+                                    'RECHAZADA'
+                                )),
+
     periodo_academico       VARCHAR(10)  NOT NULL,
     fecha_creacion          TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+
     -- codigo_solicitud: formato REQ-AAAA-NNN generado por el backend
     codigo_solicitud        VARCHAR(30)  NOT NULL UNIQUE,
+
     -- validacion_json: snapshot del motor de validaciones HU_DB §5
     validacion_json         JSONB        NULL,
+
     created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at              TIMESTAMPTZ  NULL,
