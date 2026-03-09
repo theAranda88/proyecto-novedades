@@ -321,7 +321,8 @@ $$;
 -- =============================================================================
 --  DATOS SEED — Datos mínimos para que el sistema funcione
 --  Contraseña de todos los usuarios: Password123
---  Hash: bcrypt cost 12
+--  Hash: $2b$10$O0n6t62MOUyaR9kwCje46ukcojI4JUQgpAYYCzy6aVo0JJ8/KIoCC
+--  Verificado: bcrypt.compareSync('Password123', hash) = true ✅
 -- =============================================================================
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -369,18 +370,20 @@ JOIN programas p ON p.nombre_programa = e.prog
 ON CONFLICT (cod_alumno) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- SEED 4: Usuarios
+--  SEED 4: Usuarios
 --   TODOS usan Password123
---   Hash bcrypt cost 12 generado con: bcrypt.hashSync('Password123', 12)
---   Hash verificado: $2b$12$92IXUNpkjO0rOQ5byMi.YeVmSMCvVCxBEGEoMpInHVhgBGqZrWt7K
+--   Hash bcrypt cost 10, verificado: bcrypt.compareSync('Password123', hash) = true
+--   Hash: $2b$10$O0n6t62MOUyaR9kwCje46ukcojI4JUQgpAYYCzy6aVo0JJ8/KIoCC
 --
 --   primer_login = FALSE → todos pueden entrar directo (datos de prueba)
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Hash unico para todos los usuarios seed: Password123 (bcrypt cost 12)
+-- Hash unico para todos los usuarios seed: Password123
+-- Verificado: bcrypt.compareSync('Password123', hash) = true  ✅
+-- Hash tomado directamente de la BD activa (cost 10)
 DO $$
 DECLARE
-    v_hash TEXT := '$2b$12$92IXUNpkjO0rOQ5byMi.YeVmSMCvVCxBEGEoMpInHVhgBGqZrWt7K';
+    v_hash TEXT := '$2b$10$O0n6t62MOUyaR9kwCje46ukcojI4JUQgpAYYCzy6aVo0JJ8/KIoCC';
 BEGIN
 
 INSERT INTO usuarios (nombre_completo, email_institucional, password_hash,
