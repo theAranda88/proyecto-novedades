@@ -54,18 +54,18 @@ export class RepositorioEstudiante {
     try {
       const resultado = await pool.query<FilaPerfilEstudiante>(
         `SELECT
-            e.cod_alumno,
+            e.codigo_estudiantil AS cod_alumno,
             e.nombre_completo,
-            e.email_institucional,
-            e.semestre,
+            e.correo_institucional AS email_institucional,
+            e.semestre_actual AS semestre,
             COALESCE(p.nombre_programa, 'Sin programa asignado') AS nombre_programa,
             COALESCE(e.jornada, 'manana')                        AS jornada,
             COALESCE(e.creditos_inscritos, 0)                    AS creditos_inscritos,
             COALESCE(e.creditos_max_permitidos, 20)              AS creditos_max_permitidos,
             COALESCE(e.estado_academico, 'normal')               AS estado_academico,
-            e.matricula_activa
+            TRUE AS matricula_activa
            FROM estudiantes e
-      LEFT JOIN programas p ON p.id_programa = e.id_programa
+      LEFT JOIN programas p ON p.id_programa = e.programa_id
           WHERE e.usuario_id = $1
             AND e.deleted_at IS NULL
           LIMIT 1`,

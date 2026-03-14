@@ -24,6 +24,31 @@ const opcionesSwaggerJSDoc: swaggerJSDoc.Options = {
 
 ---
 
+### 🔐 Credenciales de Prueba
+
+**Contraseña universal para TODOS:** \`Password123\`
+
+#### Estudiantes (para crear solicitudes)
+| Código | Nombre | Programa | Semestre | Cursos | Estado |
+|--------|--------|----------|----------|--------|--------|
+| **2024001** | Carlos Andres Perez Lopez | Ingenieria Sistemas | 3 | PRG201-G01 | normal |
+| **2024002** | Maria Fernanda Lopez Torres | Ingenieria Industrial | 2 | (ninguno) | normal |
+| **2024003** | Juan Carlos Martínez García | Ingenieria Sistemas | 4 | MAT101-G01, EST301-G01 | normal |
+| **2024004** | Sofia Alejandra Ruiz Mendez | Ingenieria Industrial | 3 | PRG201-G02, EST301-G02 | normal |
+| **2024005** | Miguel Angel Peña Rodríguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | normal |
+| **2024006** | Laura Patricia Sánchez López | Ingenieria Sistemas | 5 | PRG201-G03, MAT101-G03 | normal |
+| **2024007** | David Fernando Torres Castillo | Ingenieria Industrial | 3 | EST301-G01 | bajo_rendimiento |
+| **2024008** | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | normal |
+| **2023010** | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | ❌ Matricula INACTIVA |
+
+#### Personal Administrativo
+| Código | Nombre | Rol |
+|--------|--------|-----|
+| **SEC001** | Ana Maria Rodriguez Soto | secretaria |
+| **ADMIN001** | Administrador del Sistema | admin |
+
+---
+
 ### Roles del sistema
 
 | Rol | Descripción |
@@ -51,7 +76,7 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
 | **adicion_curso** | Créditos max, cupos, cruce horario, no aprobada previa |
 | **cambio_curso** | Inscripción activa, no reprobada, estado_academico, cupos, cruce horario |
 | **cambio_jornada** | Jornada diferente, grupos con cupos en nueva jornada |
-| **curso_dirigido** | Reprobada previa, numero_intentos ≥ 1, estado_academico |
+| **curso_dirigido** | Curso NO se oferta en semestre, máximo 3 estudiantes, sin cruce horario, estado académico |
 
 ---
 

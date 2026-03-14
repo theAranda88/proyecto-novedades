@@ -104,6 +104,7 @@ export class ServicioSolicitud {
           estudianteSeq,
           datos.grupo_nuevo_id!,
           perfil.estado_academico,
+          datos.periodo_academico,
         );
         break;
 
@@ -362,54 +363,91 @@ export class ServicioSolicitud {
 
   /**
    * Ejecuta todas las validaciones para CURSO_DIRIGIDO (HU_DB §5.4).
-   * Verifica: estado reprobada previo → numero_intentos >= 1 → estado académico.
    *
-   * @regla HU_DB §5.4 — Curso Dirigido
+   * Un curso dirigido es aquel que NO se oferta en el semestre actual en la jornada
+   * regular del estudiante. Es simplemente una modalidad especial cuando un curso no tiene
+   * oferta regular en un período específico.
+   *
+   * Validaciones:
+   * - El grupo es la única opción disponible (no hay oferta regular)
+   * - Máximo 3 estudiantes inscritos
+   * - Sin cruce de horario con otras materias
+   * - Estado académico habilitado (no suspendido)
+   *
+   * @regla HU_DB §5.4 — Curso Dirigido (Modalidad Especial)
    * @param estudianteId   - ID del estudiante
-   * @param grupoNuevoId   - ID del grupo del curso dirigido
-   * @param estadoAcademico - Estado académico del estudiante
+   * @param grupoNuevoId   - ID del grupo dirigido solicitado
+   * @param estadoAcademico - Estado académico del estudiante (normal/bajo_rendimiento/suspendido)
+   * @param periodo        - Período académico en el que se solicita
    * @returns {Promise<ResultadoValidacion>} Objeto con todos los chequeos
    */
   private async validarCursoDirigido(
     estudianteId:    number,
     grupoNuevoId:    number,
     estadoAcademico: string,
+    periodo:         string,
   ): Promise<ResultadoValidacion> {
     const validaciones: CheckValidacion[] = [];
 
     const grupoNuevo = await this.repoSolicitud.buscarGrupoPorId(grupoNuevoId);
 
-    // Chequeo 1: La materia debe existir en historial con estado 'reprobada'
-    let reprobadaPrevia = false;
-    let intentos        = 0;
+    // Chequeo 1: El curso NO debe ofertarse en la jornada regular del estudiante en este período
+    // Es decir, este grupo es la ÚNICA opción disponible para el curso en el período
+    let esUnicaOpcion = false;
     if (grupoNuevo) {
-      const historial = await this.repoSolicitud.buscarHistorialPorCurso(
-        estudianteId,
+      const otrosGrupos = await this.repoSolicitud.buscarGruposPorCursoYPeriodo(
         grupoNuevo.curso_id,
+        grupoNuevo.periodo,
       );
-      const registroReprobado = historial.find(h => h.estado === 'reprobada');
-      reprobadaPrevia = !!registroReprobado;
-      intentos        = historial.reduce((acc, h) => acc + h.numero_intentos, 0);
+      // Solo existe este grupo = es modalidad dirigida (no hay oferta regular)
+      esUnicaOpcion = otrosGrupos.length <= 1;
     }
     validaciones.push({
-      nombre:    'materia_reprobada_previa',
-      resultado: reprobadaPrevia,
-      detalle:   reprobadaPrevia
-        ? 'La materia tiene registro de reprobada en el historial'
-        : 'La materia no tiene estado reprobada en el historial académico',
+      nombre:    'curso_no_ofertado_regular',
+      resultado: esUnicaOpcion,
+      detalle:   esUnicaOpcion
+        ? 'El curso no se oferta en la jornada regular del semestre actual'
+        : 'El curso tiene oferta regular disponible en este período (no aplica modalidad dirigida)',
     });
 
-    // Chequeo 2: numero_intentos >= 1 (ya la cursó y la perdió)
-    const intentosSuficientes = intentos >= 1;
+    // Chequeo 2: Máximo 3 estudiantes inscritos en el grupo dirigido
+    let cuposDisponibles = false;
+    let cuposOcupados = 0;
+    if (grupoNuevo) {
+      cuposOcupados = grupoNuevo.cupos_ocupados || 0;
+      cuposDisponibles = cuposOcupados < 3; // Máximo 3 estudiantes en curso dirigido
+    }
     validaciones.push({
-      nombre:    'numero_intentos_suficiente',
-      resultado: intentosSuficientes,
-      detalle:   intentosSuficientes
-        ? `Número de intentos: ${intentos} (mínimo requerido: 1)`
-        : 'Se requiere al menos 1 intento previo reprobado para curso dirigido',
+      nombre:    'cupos_grupo_dirigido',
+      resultado: cuposDisponibles,
+      detalle:   cuposDisponibles
+        ? `Cupos disponibles en grupo dirigido: ${3 - cuposOcupados} / 3`
+        : `Grupo dirigido lleno: ${cuposOcupados} / 3 estudiantes inscritos`,
     });
 
-    // Chequeo 3: Estado académico habilitado para curso dirigido
+    // Chequeo 3: Sin cruce de horario con otras materias inscritas
+    let sinCruce = true;
+    if (grupoNuevo) {
+      const horariosActuales = await this.repoSolicitud.listarHorariosInscripciones(
+        estudianteId,
+        periodo,
+      );
+      sinCruce = !horariosActuales.some(h =>
+        this.existeCruceHorario(
+          h.dia_semana, h.hora_inicio, h.hora_fin,
+          grupoNuevo.dia_semana, grupoNuevo.hora_inicio, grupoNuevo.hora_fin,
+        ),
+      );
+    }
+    validaciones.push({
+      nombre:    'sin_cruce_horario',
+      resultado: sinCruce,
+      detalle:   sinCruce
+        ? 'Sin cruce de horario con materias inscritas'
+        : 'El horario del grupo dirigido se cruza con una materia ya inscrita',
+    });
+
+    // Chequeo 4: Estado académico habilitado para curso dirigido
     const estadoHabilitado = estadoAcademico !== 'suspendido';
     validaciones.push({
       nombre:    'estado_academico_habilitado',

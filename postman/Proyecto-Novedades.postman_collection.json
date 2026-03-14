@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Proyecto Novedades — API v2.0",
-    "description": "Colección completa del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n\n### Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` automáticamente.\n3. Si `primer_login = true` en la respuesta, debes ejecutar **POST Cambio de Contraseña** antes de usar otros endpoints.\n\n### Credenciales de prueba (HU_DB seed)\n| Código Estudiantil | Contraseña | Rol | Estado |\n|---|---|---|---|\n| 2024001 | Password123 | estudiante | Activo, matricula activa |\n| 2024002 | Password123 | estudiante | Activo, matricula activa |\n| 2023010 | Password123 | estudiante | Activo, matricula INACTIVA |\n| SEC001  | Password123 | secretaria | Activo |\n| ADMIN001 | Password123 | admin | Activo |\n\n### Reglas de negocio implementadas (HU_DB §5)\n- **ADICION_CURSO**: limite creditos, cupos, cruce horario, no aprobada previa\n- **CAMBIO_CURSO**: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- **CAMBIO_JORNADA**: jornada diferente, grupos disponibles en nueva jornada\n- **CURSO_DIRIGIDO**: reprobada previa, numero_intentos >= 1, estado_academico habilitado\n\n### Seguridad (HU_001)\n- Bloqueo tras **5 intentos fallidos** (15 min) — HTTP 423\n- Cambio obligatorio de contraseña en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en **8h**",
+    "description": "Colección completa del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n\n### Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` automáticamente.\n3. Si `primer_login = true` en la respuesta, debes ejecutar **POST Cambio de Contraseña** antes de usar otros endpoints.\n\n### 🔐 Credenciales de prueba (HU_DB seed v3.2)\n**Contraseña universal:** `Password123`\n\n#### Estudiantes\n| Código | Nombre | Programa | Semestre | Cursos | Status |\n|--------|--------|----------|----------|--------|--------|\n| **2024001** | Carlos Andres Perez Lopez | Ing. Sistemas | 3 | PRG201-G01 | ✅ Activo |\n| **2024002** | Maria Fernanda Lopez Torres | Ing. Industrial | 2 | (ninguno) | ✅ Activo |\n| **2024003** | Juan Carlos Martínez García | Ing. Sistemas | 4 | MAT101-G01, EST301-G01 | ✅ Activo |\n| **2024004** | Sofia Alejandra Ruiz Mendez | Ing. Industrial | 3 | PRG201-G02, EST301-G02 | ✅ Activo |\n| **2024005** | Miguel Angel Peña Rodríguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | ✅ Activo |\n| **2024006** | Laura Patricia Sánchez López | Ing. Sistemas | 5 | PRG201-G03, MAT101-G03 | ✅ Activo |\n| **2024007** | David Fernando Torres Castillo | Ing. Industrial | 3 | EST301-G01 | bajo_rendimiento |\n| **2024008** | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | ✅ Activo |\n| **2023010** | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | ❌ INACTIVA |\n\n#### Administrativos\n| Código | Nombre | Rol | Status |\n|--------|--------|-----|--------|\n| **SEC001** | Ana Maria Rodriguez Soto | secretaria | ✅ Activo |\n| **ADMIN001** | Administrador del Sistema | admin | ✅ Activo |\n\n### Reglas de negocio implementadas (HU_DB §5)\n- **ADICION_CURSO**: limite creditos, cupos, cruce horario, no aprobada previa\n- **CAMBIO_CURSO**: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- **CAMBIO_JORNADA**: jornada diferente, grupos disponibles en nueva jornada\n- **CURSO_DIRIGIDO**: curso NO se oferta en semestre actual, máximo 3 estudiantes, sin cruce horario, estado académico\n\n### Seguridad (HU_001)\n- Bloqueo tras **5 intentos fallidos** (15 min) — HTTP 423\n- Cambio obligatorio de contraseña en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en **8h**",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "proyecto-novedades-v2-2026"
   },
@@ -621,7 +621,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"curso_dirigido\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito modalidad de curso dirigido para Calculo Diferencial ya que lo reprobé en el semestre 2025-2 y requiero esta modalidad para avanzar en mi plan de estudios de forma efectiva.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "raw": "{\n  \"tipo_solicitud\": \"curso_dirigido\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito modalidad de curso dirigido para Calculo Diferencial porque no se oferta en la jornada regular del semestre 2026-1. Esta modalidad me permite cursarlo con tutoría personalizada (máximo 3 estudiantes) para asegurar mi aprendizaje.\",\n  \"periodo_academico\": \"2026-1\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -629,7 +629,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "solicitudes"]
             },
-            "description": "Solicita CURSO DIRIGIDO para MAT101 (grupo 1).\n\nValidaciones (HU_DB §5.4):\n1. La materia tiene estado 'reprobada' en historial_v2\n2. numero_intentos >= 1\n3. estado_academico != 'suspendido'\n\nEl estudiante 2024001 reprobó MAT101 en 2025-2 (seed de mig004), por lo que la validacion 1 y 2 deben pasar."
+            "description": "Solicita CURSO DIRIGIDO para MAT101 (grupo 1).\n\nValidaciones (HU_DB §5.4):\n1. Curso NO se oferta en el semestre actual (única opción disponible)\n2. Máximo 3 estudiantes inscritos en el grupo\n3. Sin cruce de horario con otras inscritos\n4. Estado académico habilitado (no suspendido)\n\nNOTA: No requiere que la materia haya sido reprobada previamente. Un estudiante puede solicitar un curso dirigido aunque NUNCA lo haya tomado, siempre y cuando NO se oferta en el semestre actual."
           },
           "response": [
             {
@@ -637,7 +637,57 @@
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente.\",\n  \"datos\": {\n    \"id\": 2,\n    \"codigo_solicitud\": \"REQ-2026-002\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"CURSO_DIRIGIDO\",\n    \"validacion_json\": {\n      \"tipo_solicitud\": \"curso_dirigido\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"materia_reprobada_previa\", \"resultado\": true, \"detalle\": \"La materia tiene registro de reprobada en el historial\" },\n        { \"nombre\": \"numero_intentos_suficiente\", \"resultado\": true, \"detalle\": \"Numero de intentos: 1 (minimo requerido: 1)\" },\n        { \"nombre\": \"estado_academico_habilitado\", \"resultado\": true, \"detalle\": \"Estado academico normal permite solicitud de curso dirigido\" }\n      ]\n    }\n  },\n  \"codigo_estado\": 201\n}"
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente.\",\n  \"datos\": {\n    \"id\": 2,\n    \"codigo_solicitud\": \"REQ-2026-002\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"CURSO_DIRIGIDO\",\n    \"validacion_json\": {\n      \"tipo_solicitud\": \"curso_dirigido\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"curso_no_ofertado_regular\", \"resultado\": true, \"detalle\": \"El curso no se oferta en la jornada regular del semestre actual\" },\n        { \"nombre\": \"cupos_grupo_dirigido\", \"resultado\": true, \"detalle\": \"Cupos disponibles en grupo dirigido: 2 / 3\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruce de horario con materias inscritas\" },\n        { \"nombre\": \"estado_academico_habilitado\", \"resultado\": true, \"detalle\": \"Estado académico normal permite solicitud de curso dirigido\" }\n      ]\n    }\n  },\n  \"codigo_estado\": 201\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Solicitud — Cambio de Curso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('validacion_json.tipo_solicitud = cambio_curso', () => {",
+                  "        pm.expect(r.datos.validacion_json.tipo_solicitud).to.eql('cambio_curso');",
+                  "    });",
+                  "    pm.test('Contiene grupo_actual_id y grupo_nuevo_id en validacion_json', () => {",
+                  "        pm.expect(r.datos.validacion_json.validaciones).to.be.an('array').and.not.empty;",
+                  "    });",
+                  "} else {",
+                  "    pm.test('422 - Validacion fallo', () => pm.expect(r.ok).to.be.false);",
+                  "    console.log('Razon:', r.mensaje);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"cambio_curso\",\n  \"grupo_actual_id\": 1,\n  \"grupo_nuevo_id\": 2,\n  \"justificacion\": \"Solicito cambio de grupo de MAT101 de la jornada manana grupo A al grupo B de la misma jornada porque tengo un conflicto con otro curso los miercoles a las 7:00 am y el nuevo grupo tiene clase los viernes.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            },
+            "description": "Solicita CAMBIO DE CURSO (cambio de grupo).\n\nValidaciones ejecutadas (HU_DB §5.1):\n1. Estudiante inscrito en grupo_actual_id\n2. La materia NO tiene estado 'reprobada'\n3. Estado academico = 'normal'\n4. Cupos disponibles en grupo_nuevo_id\n5. Sin cruce de horario\n\nEjemplo: grupo_actual_id=1 (MAT101 G-01 lunes) → grupo_nuevo_id=2 (MAT101 G-02 miercoles)"
+          },
+          "response": [
+            {
+              "name": "201 — Cambio de curso aprobado",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente\",\n  \"datos\": {\n    \"id\": 3,\n    \"codigo_solicitud\": \"REQ-2026-003\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"CAMBIO_CURSO\",\n    \"validacion_json\": {\n      \"tipo_solicitud\": \"cambio_curso\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"inscripcion_activa\", \"resultado\": true, \"detalle\": \"Estudiante inscrito en grupo_actual_id 1\" },\n        { \"nombre\": \"estado_materia_no_reprobada\", \"resultado\": true, \"detalle\": \"La materia no esta reprobada\" },\n        { \"nombre\": \"estado_academico_normal\", \"resultado\": true, \"detalle\": \"Estado academico normal\" },\n        { \"nombre\": \"cupos_disponibles\", \"resultado\": true, \"detalle\": \"Cupos en grupo nuevo: 26\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruce de horario\" }\n      ]\n    }\n  },\n  \"codigo_estado\": 201\n}"
             }
           ]
         },
@@ -667,7 +717,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"cambio_jornada\",\n  \"jornada_actual\": \"manana\",\n  \"jornada_nueva\": \"tarde\",\n  \"justificacion\": \"Solicito cambio de jornada de manana a tarde debido a que inicio actividad laboral de medio tiempo en las mananas a partir del presente semestre y necesito reorganizar mi horario academico.\",\n  \"periodo_academico\": \"2026-1\"\n}",
+              "raw": "{\n  \"tipo_solicitud\": \"cambio_jornada\",\n  \"jornada_nueva\": \"tarde\",\n  \"justificacion\": \"Solicito cambio de jornada de manana a tarde debido a que inicio actividad laboral de medio tiempo en las mananas a partir del presente semestre y necesito reorganizar mi horario academico para poder cumplir con ambas responsabilidades.\",\n  \"periodo_academico\": \"2026-1\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -675,7 +725,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "solicitudes"]
             },
-            "description": "Solicita CAMBIO DE JORNADA de manana a tarde.\n\nValidaciones (HU_DB §5.2):\n1. jornada_nueva != jornada_actual\n2. Existen grupos con cupos en la nueva jornada para todas las materias inscritas"
+            "description": "Solicita CAMBIO DE JORNADA de manana a tarde.\n\nValidaciones (HU_DB §5.2):\n1. jornada_nueva != jornada_actual del estudiante\n2. Existen grupos con cupos en la nueva jornada para todas las materias inscritas actualmente"
           },
           "response": []
         },

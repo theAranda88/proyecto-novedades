@@ -1,30 +1,45 @@
 -- =============================================================================
---  SETUP COMPLETO — Proyecto Novedades v3.0
---  Fecha: 2026-03-07
+--  SETUP COMPLETO — Proyecto Novedades v3.2 (HU_DB v1.0 — Corregida)
+--  Fecha: 2026-03-14
 --
 --  DESCRIPCIÓN:
---    Script único para crear la BD desde CERO en un nuevo entorno.
---    Incluye TODO lo aplicado hasta la migración 005 (estado actual del sistema).
---    NO es necesario ejecutar las migraciones 001-005 si se usa este script.
+--    Script MAESTRO para crear la BD desde CERO en un nuevo entorno.
+--    Incluye TODO lo aplicado hasta la migración 009.
+--    ✔ Migración 004: Esquema HU_DB (grupos_curso, historial_v2, etc.)
+--    ✔ Migración 006: Fix password_hash
+--    ✔ Migración 007: Agregar grupo_nuevo_id y grupo_actual_id a solicitudes
+--    ✔ Migración 009: Agregar valor_curso_dirigido a grupos_curso (NUEVO)
+--    NO es necesario ejecutar las migraciones individuales si se usa este script.
+--
+--  CAMBIOS EN VERSIÓN 3.2 (CORRECCIÓN CRÍTICA):
+--    ✔ CORRECCIÓN: Validación de CURSO_DIRIGIDO ahora CORRECTA (HU_DB §5.4)
+--       - REMOVIDA: Validación de "materia reprobada previa"
+--       - Nuevo enfoque: Curso que NO se oferta en el semestre actual
+--       - 4 chequeos: curso_no_ofertado_regular, cupos, sin_cruce, estado_académico
+--    ✔ Agregado: Campo valor_curso_dirigido en tabla grupos_curso
+--    ✔ Actualizado: Swagger documentation con nuevos detalles
+--    ✔ Actualizado: Postman collection con ejemplos correctos
 --
 --  PREREQUISITO:
 --    Crear la BD vacía en PostgreSQL antes de ejecutar:
 --      CREATE DATABASE proyecto_novedades;
 --
 --  EJECUCIÓN (Windows — PowerShell):
---    $env:PGPASSWORD="tu_password"
---    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -h localhost -p 5432 -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
+--    $env:PGPASSWORD="admin123"
+--    & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
 --
 --  EJECUCIÓN (Linux / Mac):
---    PGPASSWORD=tu_password psql -h localhost -p 5432 -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
+--    PGPASSWORD=admin123 psql -U postgres -d proyecto_novedades -f migrations/000_setup_completo.sql
 --
 --  RESULTADO: BD lista con tablas + seed de datos para pruebas:
---    codigo_estudiantil | password    | rol        | estado
---    2024001            | Password123 | estudiante | matricula activa
---    2024002            | Password123 | estudiante | matricula activa (MAT101 reprobada)
---    2023010            | Password123 | estudiante | matricula INACTIVA
---    SEC001             | Password123 | secretaria | activo
---    ADMIN001           | Password123 | admin      | activo
+--    codigo_estudiantil | nombre_completo        | rol        | estado
+--    2024001            | Carlos Andres Perez    | estudiante | ✅ Activo
+--    2024002            | Maria Fernanda Lopez   | estudiante | ✅ Activo
+--    2024003-2024008    | Varios estudiantes     | estudiante | ✅ Activos
+--    2023010            | Luis Eduardo Gomez     | estudiante | ❌ Inactivo
+--    SEC001             | Ana Maria Rodriguez    | secretaria | ✅ Activo
+--    ADMIN001           | Administrador Sistema  | admin      | ✅ Activo
+--    Password: Password123 para todos
 --
 --  MIGRACIONES INCLUIDAS EN ESTE SCRIPT:
 --    ✔ 000 — Esquema base + seed
@@ -33,10 +48,17 @@
 --    ✔ 003 — Tabla usuarios con roles
 --    ✔ 004 — Esquema HU_DB (grupos_curso, historial_v2, inscripciones_activas, etc.)
 --    ✔ 005 — Fix constraints solicitudes (tipo_novedad, estado, grupo_nuevo_id)
+--    ✔ 006 — Fix password_hash
+--    ✔ 007 — Agregar grupo_nuevo_id y grupo_actual_id con constraints correctos
+--    ✔ 009 — Agregar valor_curso_dirigido a grupos_curso (HU_DB §5.4)
 --
---  PARA ENTORNOS EXISTENTES (colaborador que ya tiene la BD):
---    Solo ejecutar las migraciones faltantes en orden:
---      psql ... -f migrations/005_fix_constraints_solicitudes.sql
+--  PARA COLABORADORES CON BD EXISTENTE:
+--    Si ya tienes la BD y necesitas actualizarla a esta versión:
+--    1. Ejecuta solo las migraciones faltantes en orden:
+--       psql ... -f migrations/006_fix_password_hash.sql
+--       psql ... -f migrations/007_agregar_grupos_solicitudes.sql
+--    2. Verifica que el proyecto se compila: npm run build
+--    3. Inicia: npm run dev
 -- =============================================================================
 
 BEGIN;
@@ -63,32 +85,7 @@ CREATE TABLE IF NOT EXISTS programas (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3. TABLA: estudiantes
--- ─────────────────────────────────────────────────────────────────────────────
-
-CREATE TABLE IF NOT EXISTS estudiantes (
-    cod_alumno               VARCHAR(20)  PRIMARY KEY,
-    doc_alumno               VARCHAR(20)  NOT NULL UNIQUE,
-    nombre_completo          VARCHAR(200) NOT NULL,
-    email_institucional      VARCHAR(150) NOT NULL UNIQUE,
-    semestre                 SMALLINT     NOT NULL CHECK (semestre BETWEEN 1 AND 12),
-    id_programa              INT          NOT NULL REFERENCES programas(id_programa),
-    matricula_activa         BOOLEAN      NOT NULL DEFAULT FALSE,
-    usuario_id               BIGINT       NULL,
-    jornada                  VARCHAR(10)  NOT NULL DEFAULT 'manana',
-    creditos_inscritos       SMALLINT     NOT NULL DEFAULT 0,
-    creditos_max_permitidos  SMALLINT     NOT NULL DEFAULT 20,
-    promedio_acumulado       DECIMAL(4,2) NOT NULL DEFAULT 0.00,
-    estado_academico         VARCHAR(20)  NOT NULL DEFAULT 'normal',
-    created_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at               TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    deleted_at               TIMESTAMPTZ  NULL,
-    created_by               BIGINT       NULL,
-    updated_by               BIGINT       NULL
-);
-
--- ─────────────────────────────────────────────────────────────────────────────
--- 4. TABLA: usuarios
+-- 3. TABLA: usuarios (DEBE IR ANTES DE estudiantes por FK)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS usuarios (
@@ -98,8 +95,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     password_hash        VARCHAR(255) NOT NULL,
     rol                  rol_sistema  NOT NULL DEFAULT 'ESTUDIANTE',
     activo               BOOLEAN      NOT NULL DEFAULT TRUE,
-    cod_alumno           VARCHAR(20)  NULL REFERENCES estudiantes(cod_alumno)
-                             ON UPDATE CASCADE ON DELETE CASCADE,
     fecha_creacion       TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     codigo_estudiantil   VARCHAR(20)  NOT NULL UNIQUE,
     primer_login         BOOLEAN      NOT NULL DEFAULT TRUE,
@@ -110,14 +105,38 @@ CREATE TABLE IF NOT EXISTS usuarios (
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at           TIMESTAMPTZ  NULL,
     created_by           BIGINT       NULL,
-    updated_by           BIGINT       NULL,
-
-    CONSTRAINT uq_usuario_alumno       UNIQUE (cod_alumno),
-    CONSTRAINT chk_alumno_rol CHECK (
-        (rol = 'ESTUDIANTE' AND cod_alumno IS NOT NULL)
-        OR (rol IN ('SECRETARIA', 'ADMIN') AND cod_alumno IS NULL)
-    )
+    updated_by           BIGINT       NULL
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4. TABLA: estudiantes (AHORA puede tener FK a usuarios)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS estudiantes (
+    id                     BIGINT        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id             BIGINT        NULL UNIQUE REFERENCES usuarios(id_usuario),
+    cod_alumno             VARCHAR(20)   UNIQUE,
+    codigo_estudiantil     VARCHAR(20)   NOT NULL UNIQUE,
+    nombre_completo        VARCHAR(150)  NOT NULL,
+    doc_alumno             VARCHAR(20)   NOT NULL UNIQUE,
+    email_institucional    VARCHAR(150)  UNIQUE,
+    correo_institucional   VARCHAR(150)  UNIQUE,
+    semestre_actual        SMALLINT      NOT NULL CHECK (semestre_actual BETWEEN 1 AND 12),
+    programa_id            INT           NOT NULL REFERENCES programas(id_programa),
+    matricula_activa       BOOLEAN       NOT NULL DEFAULT FALSE,
+    jornada                VARCHAR(10)   NOT NULL DEFAULT 'manana',
+    creditos_inscritos     SMALLINT      NOT NULL DEFAULT 0,
+    creditos_max_permitidos SMALLINT     NOT NULL DEFAULT 20,
+    promedio_acumulado     DECIMAL(4,2)  NOT NULL DEFAULT 0.00,
+    estado_academico       VARCHAR(20)   NOT NULL DEFAULT 'normal'
+                           CHECK (estado_academico IN ('normal','bajo_rendimiento','suspendido')),
+    created_at             TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at             TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    deleted_at             TIMESTAMPTZ   NULL,
+    created_by             BIGINT        NULL,
+    updated_by             BIGINT        NULL
+);
+
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 5. TABLA: cursos
@@ -151,6 +170,7 @@ CREATE TABLE IF NOT EXISTS grupos_curso (
     cupos_ocupados SMALLINT     NOT NULL DEFAULT 0,
     periodo        VARCHAR(10)  NOT NULL,
     activo         BOOLEAN      NOT NULL DEFAULT TRUE,
+    valor_curso_dirigido DECIMAL(10,2) NULL CHECK (valor_curso_dirigido IS NULL OR valor_curso_dirigido > 0),
     created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
 
@@ -289,6 +309,7 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_codigo_estudiantil ON usuarios(codigo_es
 CREATE INDEX IF NOT EXISTS idx_usuarios_deleted            ON usuarios(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_estudiantes_usuario_id      ON estudiantes(usuario_id) WHERE usuario_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_grupos_curso_busqueda       ON grupos_curso(curso_id, jornada, periodo) WHERE activo = TRUE;
+CREATE INDEX IF NOT EXISTS idx_grupos_curso_valor_dirigido ON grupos_curso(valor_curso_dirigido) WHERE valor_curso_dirigido IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_historial_v2_elegibilidad   ON historial_v2(estudiante_id, curso_id);
 CREATE INDEX IF NOT EXISTS idx_inscripciones_activas       ON inscripciones_activas(estudiante_id, periodo);
 CREATE INDEX IF NOT EXISTS idx_solicitudes_filtros         ON solicitudes(periodo_academico) WHERE deleted_at IS NULL;
@@ -354,20 +375,28 @@ ON CONFLICT (cod_curso) DO NOTHING;
 --   2023010 → matricula INACTIVA (para probar el rechazo de login)
 -- ─────────────────────────────────────────────────────────────────────────────
 
-INSERT INTO estudiantes (cod_alumno, doc_alumno, nombre_completo, email_institucional,
-                         semestre, id_programa, matricula_activa,
+INSERT INTO estudiantes (codigo_estudiantil, cod_alumno, doc_alumno, nombre_completo,
+                         email_institucional, correo_institucional,
+                         semestre_actual, programa_id, matricula_activa,
                          jornada, creditos_inscritos, creditos_max_permitidos, estado_academico)
 SELECT
-    e.cod_alumno, e.doc_alumno, e.nombre_completo, e.email,
+    e.codigo_estud, e.cod_alumno, e.doc_alumno, e.nombre_completo,
+    e.email, e.email,
     e.semestre, p.id_programa, e.activa,
     e.jornada, e.cred_ins, e.cred_max, e.estado
 FROM (VALUES
-    ('2024001','CC-1001','Carlos Andres Perez Lopez',   'cperez@proyectonovedades.edu.co',   3, 'Ingenieria de Sistemas',  TRUE,  'manana', 9,  20, 'normal'),
-    ('2024002','CC-1002','Maria Fernanda Lopez Torres', 'mlopez@proyectonovedades.edu.co',   2, 'Ingenieria Industrial',   TRUE,  'tarde',  6,  20, 'normal'),
-    ('2023010','CC-1010','Luis Eduardo Gomez Rios',     'lgomez@proyectonovedades.edu.co',   4, 'Administracion de Empresas', FALSE, 'manana', 0, 20, 'normal')
-) AS e(cod_alumno, doc_alumno, nombre_completo, email, semestre, prog, activa, jornada, cred_ins, cred_max, estado)
+    ('2024001', '2024001', 'CC-1001', 'Carlos Andres Perez Lopez',   'cperez@proyectonovedades.edu.co',   3, 'Ingenieria de Sistemas',  TRUE,  'manana', 9,  20, 'normal'),
+    ('2024002', '2024002', 'CC-1002', 'Maria Fernanda Lopez Torres', 'mlopez@proyectonovedades.edu.co',   2, 'Ingenieria Industrial',   TRUE,  'tarde',  6,  20, 'normal'),
+    ('2023010', '2023010', 'CC-1010', 'Luis Eduardo Gomez Rios',     'lgomez@proyectonovedades.edu.co',   4, 'Administracion de Empresas', FALSE, 'manana', 0, 20, 'normal'),
+    ('2024003', '2024003', 'CC-1003', 'Juan Carlos Martínez García',    'jmartinez@proyectonovedades.edu.co',  4, 'Ingenieria de Sistemas',    TRUE,  'manana', 12, 20, 'normal'),
+    ('2024004', '2024004', 'CC-1004', 'Sofia Alejandra Ruiz Mendez',    'sruiz@proyectonovedades.edu.co',      3, 'Ingenieria Industrial',     TRUE,  'tarde',  9,  20, 'normal'),
+    ('2024005', '2024005', 'CC-1005', 'Miguel Angel Peña Rodríguez',    'mpena@proyectonovedades.edu.co',      2, 'Administracion de Empresas', TRUE,  'manana', 6,  20, 'normal'),
+    ('2024006', '2024006', 'CC-1006', 'Laura Patricia Sánchez López',   'lsanchez@proyectonovedades.edu.co',   5, 'Ingenieria de Sistemas',    TRUE,  'noche',  15, 20, 'normal'),
+    ('2024007', '2024007', 'CC-1007', 'David Fernando Torres Castillo',  'dtorres@proyectonovedades.edu.co',    3, 'Ingenieria Industrial',     TRUE,  'tarde',  9,  20, 'bajo_rendimiento'),
+    ('2024008', '2024008', 'CC-1008', 'Ana Beatriz Flores Gutierrez',   'aflores@proyectonovedades.edu.co',    6, 'Administracion de Empresas', TRUE,  'manana', 18, 20, 'normal')
+) AS e(codigo_estud, cod_alumno, doc_alumno, nombre_completo, email, semestre, prog, activa, jornada, cred_ins, cred_max, estado)
 JOIN programas p ON p.nombre_programa = e.prog
-ON CONFLICT (cod_alumno) DO NOTHING;
+ON CONFLICT (codigo_estudiantil) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 --  SEED 4: Usuarios
@@ -387,27 +416,51 @@ DECLARE
 BEGIN
 
 INSERT INTO usuarios (nombre_completo, email_institucional, password_hash,
-                      rol, activo, cod_alumno, codigo_estudiantil, primer_login)
+                      rol, activo, codigo_estudiantil, primer_login)
 VALUES
     ('Carlos Andres Perez Lopez',
      'cperez@proyectonovedades.edu.co',
-     v_hash, 'ESTUDIANTE', TRUE, '2024001', '2024001', FALSE),
+     v_hash, 'ESTUDIANTE', TRUE, '2024001', FALSE),
 
     ('Maria Fernanda Lopez Torres',
      'mlopez@proyectonovedades.edu.co',
-     v_hash, 'ESTUDIANTE', TRUE, '2024002', '2024002', FALSE),
+     v_hash, 'ESTUDIANTE', TRUE, '2024002', FALSE),
 
     ('Luis Eduardo Gomez Rios',
      'lgomez@proyectonovedades.edu.co',
-     v_hash, 'ESTUDIANTE', TRUE, '2023010', '2023010', FALSE),
+     v_hash, 'ESTUDIANTE', TRUE, '2023010', FALSE),
+
+    ('Juan Carlos Martínez García',
+     'jmartinez@proyectonovedades.edu.co',
+     v_hash, 'ESTUDIANTE', TRUE, '2024003', FALSE),
+
+    ('Sofia Alejandra Ruiz Mendez',
+     'sruiz@proyectonovedades.edu.co',
+     v_hash, 'ESTUDIANTE', TRUE, '2024004', FALSE),
+
+    ('Miguel Angel Peña Rodríguez',
+     'mpena@proyectonovedades.edu.co',
+     v_hash, 'ESTUDIANTE', TRUE, '2024005', FALSE),
+
+    ('Laura Patricia Sánchez López',
+     'lsanchez@proyectonovedades.edu.co',
+     v_hash, 'ESTUDIANTE', TRUE, '2024006', FALSE),
+
+    ('David Fernando Torres Castillo',
+     'dtorres@proyectonovedades.edu.co',
+     v_hash, 'ESTUDIANTE', TRUE, '2024007', FALSE),
+
+    ('Ana Beatriz Flores Gutierrez',
+     'aflores@proyectonovedades.edu.co',
+     v_hash, 'ESTUDIANTE', TRUE, '2024008', FALSE),
 
     ('Ana Maria Rodriguez Soto',
      'secretaria@proyectonovedades.edu.co',
-     v_hash, 'SECRETARIA', TRUE, NULL, 'SEC001', FALSE),
+     v_hash, 'SECRETARIA', TRUE, 'SEC001', FALSE),
 
     ('Administrador del Sistema',
      'admin@proyectonovedades.edu.co',
-     v_hash, 'ADMIN', TRUE, NULL, 'ADMIN001', FALSE)
+     v_hash, 'ADMIN', TRUE, 'ADMIN001', FALSE)
 
 ON CONFLICT (email_institucional) DO NOTHING;
 
@@ -417,7 +470,7 @@ END $$;
 UPDATE estudiantes e
    SET usuario_id = u.id_usuario
   FROM usuarios u
- WHERE u.cod_alumno = e.cod_alumno
+ WHERE u.codigo_estudiantil = e.codigo_estudiantil
    AND e.usuario_id IS NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -445,24 +498,96 @@ JOIN cursos c ON c.cod_curso = g.cod
 ON CONFLICT (curso_id, codigo_grupo, periodo) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- SEED 6: Inscripciones activas — estudiante 2024001 inscrito en PRG201-G01
--- estudiante_id = posición ROW_NUMBER por cod_alumno (mismo criterio que el backend)
+-- SEED 6: Inscripciones activas — Todos los estudiantes con sus cursos
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- 2024001: Inscrito en PRG201-G01 (manana)
 INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
 SELECT
-    nums.rn,
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024001' LIMIT 1),
     g.id,
     '2026-1'
 FROM grupos_curso g
 JOIN cursos c ON c.id = g.curso_id
-JOIN (
-    SELECT cod_alumno,
-           ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT AS rn
-    FROM estudiantes
-    WHERE deleted_at IS NULL
-) nums ON nums.cod_alumno = '2024001'
 WHERE c.cod_curso = 'PRG201'
+  AND g.codigo_grupo = 'G-01'
+  AND g.periodo = '2026-1'
+ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
+
+-- 2024003: Inscrito en MAT101-G01 y EST301-G01 (manana)
+INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
+SELECT
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024003' LIMIT 1),
+    g.id,
+    '2026-1'
+FROM grupos_curso g
+JOIN cursos c ON c.id = g.curso_id
+WHERE c.cod_curso IN ('MAT101', 'EST301')
+  AND g.codigo_grupo = 'G-01'
+  AND g.periodo = '2026-1'
+ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
+
+-- 2024004: Inscrito en PRG201-G02 y EST301-G02 (tarde)
+INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
+SELECT
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024004' LIMIT 1),
+    g.id,
+    '2026-1'
+FROM grupos_curso g
+JOIN cursos c ON c.id = g.curso_id
+WHERE ((c.cod_curso = 'PRG201' AND g.codigo_grupo = 'G-02')
+   OR (c.cod_curso = 'EST301' AND g.codigo_grupo = 'G-02'))
+  AND g.periodo = '2026-1'
+ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
+
+-- 2024005: Inscrito en MAT101-G02 y PRG201-G02 (tarde)
+INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
+SELECT
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024005' LIMIT 1),
+    g.id,
+    '2026-1'
+FROM grupos_curso g
+JOIN cursos c ON c.id = g.curso_id
+WHERE ((c.cod_curso = 'MAT101' AND g.codigo_grupo = 'G-02')
+   OR (c.cod_curso = 'PRG201' AND g.codigo_grupo = 'G-02'))
+  AND g.periodo = '2026-1'
+ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
+
+-- 2024006: Inscrito en PRG201-G03 y MAT101-G03 (noche)
+INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
+SELECT
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024006' LIMIT 1),
+    g.id,
+    '2026-1'
+FROM grupos_curso g
+JOIN cursos c ON c.id = g.curso_id
+WHERE c.cod_curso IN ('PRG201', 'MAT101')
+  AND g.jornada = 'noche'
+  AND g.periodo = '2026-1'
+ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
+
+-- 2024007: Inscrito en EST301-G01 (manana)
+INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
+SELECT
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024007' LIMIT 1),
+    g.id,
+    '2026-1'
+FROM grupos_curso g
+JOIN cursos c ON c.id = g.curso_id
+WHERE c.cod_curso = 'EST301'
+  AND g.codigo_grupo = 'G-01'
+  AND g.periodo = '2026-1'
+ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
+
+-- 2024008: Inscrito en MAT101-G01, PRG201-G01, EST301-G01 (manana)
+INSERT INTO inscripciones_activas (estudiante_id, grupo_id, periodo)
+SELECT
+    (SELECT ROW_NUMBER() OVER (ORDER BY cod_alumno)::INT FROM estudiantes WHERE codigo_estudiantil = '2024008' LIMIT 1),
+    g.id,
+    '2026-1'
+FROM grupos_curso g
+JOIN cursos c ON c.id = g.curso_id
+WHERE c.cod_curso IN ('MAT101', 'PRG201', 'EST301')
   AND g.codigo_grupo = 'G-01'
   AND g.periodo = '2026-1'
 ON CONFLICT (estudiante_id, grupo_id, periodo) DO NOTHING;
@@ -492,6 +617,17 @@ ON CONFLICT (estudiante_id, curso_id, periodo) DO NOTHING;
 -- ─────────────────────────────────────────────────────────────────────────────
 -- VERIFICACION FINAL
 -- ─────────────────────────────────────────────────────────────────────────────
+
+SELECT
+    '>>> VERIFICACIÓN: ESTRUCTURA DE GRUPOS_CURSO (HU_DB §5.4) <<<'                                AS info;
+SELECT
+    column_name,
+    data_type,
+    is_nullable
+FROM information_schema.columns
+WHERE table_name = 'grupos_curso'
+      AND column_name IN ('id', 'curso_id', 'cupo_maximo', 'valor_curso_dirigido')
+ORDER BY ordinal_position;
 
 SELECT
     '>>> USUARIOS CREADOS <<<'                                AS info;

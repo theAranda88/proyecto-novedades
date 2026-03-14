@@ -450,5 +450,34 @@ export class RepositorioSolicitud {
       throw new ErrorBaseDatos(`Error al actualizar estado: ${(error as Error).message}`);
     }
   }
-}
 
+  /**
+   * Busca todos los grupos de un curso en un periodo específico.
+   * Se usa para determinar si un curso tiene oferta regular o solo dirigida.
+   * Un curso es "dirigido" si existe solo un grupo (el grupo solicitado).
+   *
+   * @param cursoId - ID del curso
+   * @param periodo - Periodo académico
+   * @returns {Promise<FilaGrupoCurso[]>}
+   */
+  async buscarGruposPorCursoYPeriodo(cursoId: number, periodo: string): Promise<FilaGrupoCurso[]> {
+    try {
+      const resultado = await pool.query<FilaGrupoCurso>(
+        `SELECT g.id, g.curso_id, g.codigo_grupo, g.jornada, g.dia_semana,
+                g.hora_inicio::TEXT AS hora_inicio, g.hora_fin::TEXT AS hora_fin,
+                g.cupo_maximo, g.cupos_ocupados, g.periodo, g.activo,
+                COALESCE(c.creditos, 3) AS creditos,
+                c.nombre_curso          AS nombre_curso
+           FROM grupos_curso g
+           JOIN cursos c ON c.id = g.curso_id
+          WHERE g.curso_id = $1
+            AND g.periodo  = $2
+            AND g.activo   = TRUE`,
+        [cursoId, periodo],
+      );
+      return resultado.rows;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al buscar grupos por curso y periodo: ${(error as Error).message}`);
+    }
+  }
+}
