@@ -474,26 +474,45 @@ UPDATE estudiantes e
    AND e.usuario_id IS NULL;
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- SEED 4b: Cursos adicionales para modalidad dirigida (no aparecen en oferta regular)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- Primero, verifica que existan cursos para modalidad dirigida
+-- Si no existen, crea dos cursos nuevos
+INSERT INTO cursos (cod_curso, nombre_curso, creditos)
+VALUES
+    ('FIS401', 'Física Avanzada IV', 4),
+    ('QUI301', 'Química Orgánica III', 3)
+ON CONFLICT (cod_curso) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- SEED 5: Grupos de cursos — periodo 2026-1
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Grupos de OFERTA REGULAR (disponibles en múltiples jornadas)
 INSERT INTO grupos_curso
     (curso_id, codigo_grupo, docente, jornada, dia_semana, hora_inicio, hora_fin,
-     aula, cupo_maximo, cupos_ocupados, periodo)
+     aula, cupo_maximo, cupos_ocupados, periodo, valor_curso_dirigido)
 SELECT c.id, g.codigo_grupo, g.docente, g.jornada,
        g.dia_semana, g.hora_inicio::TIME, g.hora_fin::TIME,
-       g.aula, g.cupo_maximo, g.cupos_ocupados, '2026-1'
+       g.aula, g.cupo_maximo, g.cupos_ocupados, '2026-1', g.valor_dirigido
 FROM (VALUES
-    ('MAT101','G-01','Dr. Ramon Suarez',  'manana','lunes',     '07:00','09:00','Aula-201',35, 9),
-    ('MAT101','G-02','Dr. Ramon Suarez',  'tarde', 'miercoles', '14:00','16:00','Aula-201',35, 5),
-    ('MAT101','G-03','Dra. Elena Mora',   'noche', 'lunes',     '18:00','20:00','Aula-301',30, 0),
-    ('PRG201','G-01','Ing. Jorge Baena',  'manana','lunes',     '08:00','10:00','Lab-101', 40,15),
-    ('PRG201','G-02','Ing. Jorge Baena',  'tarde', 'viernes',   '14:00','16:00','Lab-101', 40,10),
-    ('PRG201','G-03','Ing. Pedro Nieto',  'noche', 'martes',    '18:00','20:00','Lab-102', 35, 5),
-    ('EST301','G-01','Dra. Clara Reyes',  'manana','martes',    '09:00','11:00','Aula-202',30, 8),
-    ('EST301','G-02','Dra. Clara Reyes',  'tarde', 'jueves',    '14:00','16:00','Aula-202',30, 8)
+    -- OFERTA REGULAR: Cursos ofertados en múltiples jornadas
+    ('MAT101','G-01','Dr. Ramon Suarez',  'manana','lunes',     '07:00','09:00','Aula-201',35, 9, NULL::DECIMAL),
+    ('MAT101','G-02','Dr. Ramon Suarez',  'tarde', 'miercoles', '14:00','16:00','Aula-201',35, 5, NULL::DECIMAL),
+    ('MAT101','G-03','Dra. Elena Mora',   'noche', 'lunes',     '18:00','20:00','Aula-301',30, 0, NULL::DECIMAL),
+    ('PRG201','G-01','Ing. Jorge Baena',  'manana','lunes',     '08:00','10:00','Lab-101', 40,15, NULL::DECIMAL),
+    ('PRG201','G-02','Ing. Jorge Baena',  'tarde', 'viernes',   '14:00','16:00','Lab-101', 40,10, NULL::DECIMAL),
+    ('PRG201','G-03','Ing. Pedro Nieto',  'noche', 'martes',    '18:00','20:00','Lab-102', 35, 5, NULL::DECIMAL),
+    ('EST301','G-01','Dra. Clara Reyes',  'manana','martes',    '09:00','11:00','Aula-202',30, 8, NULL::DECIMAL),
+    ('EST301','G-02','Dra. Clara Reyes',  'tarde', 'jueves',    '14:00','16:00','Aula-202',30, 8, NULL::DECIMAL),
+
+    -- MODALIDAD DIRIGIDA: Cursos que NO se ofertam en oferta regular (solo grupo dirigido)
+    -- Máximo 3 estudiantes + valor diferenciado
+    ('FIS401','G-DIR','Dr. Carlos Molina', 'manana','miercoles', '09:00','11:00','Aula-401', 3, 0, 280000::DECIMAL),
+    ('QUI301','G-DIR','Dra. Patricia Ruiz', 'tarde', 'jueves',   '15:00','17:00','Lab-201',  3, 0, 250000::DECIMAL)
 ) AS g(cod, codigo_grupo, docente, jornada, dia_semana, hora_inicio, hora_fin,
-       aula, cupo_maximo, cupos_ocupados)
+       aula, cupo_maximo, cupos_ocupados, valor_dirigido)
 JOIN cursos c ON c.cod_curso = g.cod
 ON CONFLICT (curso_id, codigo_grupo, periodo) DO NOTHING;
 

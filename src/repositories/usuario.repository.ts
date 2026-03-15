@@ -192,4 +192,297 @@ export class RepositorioUsuario {
       throw new ErrorBaseDatos(`Error al obtener cod_alumno: ${(error as Error).message}`);
     }
   }
+
+  /**
+   * Verifica si un email ya existe en la tabla usuarios.
+   * Considera soft delete (deleted_at IS NULL).
+   *
+   * @param email - Email institucional
+   * @returns {Promise<boolean>} true si existe, false en caso contrario
+   */
+  async existeEmail(email: string): Promise<boolean> {
+    try {
+      const resultado = await pool.query<{ existe: boolean }>(
+        `SELECT EXISTS(
+           SELECT 1 FROM usuarios
+           WHERE email_institucional = $1
+             AND deleted_at IS NULL
+         ) AS existe`,
+        [email],
+      );
+      return resultado.rows[0]?.existe ?? false;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al verificar email: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Verifica si un código estudiantil ya existe en la tabla usuarios.
+   * Considera soft delete (deleted_at IS NULL).
+   *
+   * @param codigoEstudiantil - Código institucional
+   * @returns {Promise<boolean>} true si existe, false en caso contrario
+   */
+  async existeCodigoEstudiantil(codigoEstudiantil: string): Promise<boolean> {
+    try {
+      const resultado = await pool.query<{ existe: boolean }>(
+        `SELECT EXISTS(
+           SELECT 1 FROM usuarios
+           WHERE codigo_estudiantil = $1
+             AND deleted_at IS NULL
+         ) AS existe`,
+        [codigoEstudiantil],
+      );
+      return resultado.rows[0]?.existe ?? false;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al verificar código estudiantil: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Obtiene un usuario por su ID.
+   * Incluye información del rol para validaciones de autorización.
+   *
+   * @param idUsuario - id_usuario
+   * @returns {Promise<FilaUsuario | null>} Usuario o null si no existe
+   */
+  async obtenerPorId(idUsuario: number): Promise<FilaUsuario | null> {
+    try {
+      const resultado = await pool.query<FilaUsuario>(
+        `SELECT id_usuario          AS id,
+                nombre_completo,
+                codigo_estudiantil,
+                email_institucional,
+                password_hash,
+                LOWER(rol::TEXT)    AS rol,
+                primer_login,
+                intentos_fallidos,
+                bloqueado_hasta,
+                ultimo_login,
+                activo,
+                deleted_at
+           FROM usuarios
+          WHERE id_usuario = $1
+            AND deleted_at IS NULL
+          LIMIT 1`,
+        [idUsuario],
+      );
+      return resultado.rows[0] ?? null;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al obtener usuario por ID: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Crea un nuevo usuario en la tabla usuarios.
+   * Establece automáticamente primer_login = TRUE (cambio obligatorio de password).
+   * El password se genera con hash bcrypt cost ≥ 12.
+   *
+   * Usado para crear SECRETARIA y ADMIN (sin perfil de estudiante).
+   *
+   * @param nombreCompleto      - Nombre del usuario
+   * @param emailInstitucional  - Email único
+   * @param codigoEstudiantil   - Código único
+   * @param rol                 - Rol del usuario (ESTUDIANTE, SECRETARIA, ADMIN)
+   * @param passwordHash        - Hash bcrypt de la contraseña temporal
+   * @param idUsuarioAutor      - ID del usuario que crea (para auditoría)
+   * @returns {Promise<number>} ID del usuario creado (id_usuario)
+   * @throws {ErrorBaseDatos} Si falla la inserción
+   */
+  async crearUsuario(
+    nombreCompleto:      string,
+    emailInstitucional:  string,
+    codigoEstudiantil:   string,
+    rol:                 string,
+    passwordHash:        string,
+    idUsuarioAutor:      number,
+  ): Promise<number> {
+    try {
+      const rolEnum = rol.toUpperCase();
+      const resultado = await pool.query<{ id_usuario: number }>(
+        `INSERT INTO usuarios
+            (nombre_completo, email_institucional, codigo_estudiantil, 
+             password_hash, rol, primer_login, activo, 
+             created_by, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5::rol_sistema, TRUE, TRUE, $6, NOW(), NOW())
+         RETURNING id_usuario`,
+        [nombreCompleto, emailInstitucional, codigoEstudiantil, passwordHash, rolEnum, idUsuarioAutor],
+      );
+      return resultado.rows[0]?.id_usuario ?? 0;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al crear usuario: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Crea un usuario + perfil de estudiante en una TRANSACCIÓN.
+   * Si falla, revierte ambos cambios automáticamente.
+   * Cumple HU_001 + HU_DB §4.2
+   *
+   * @param nombreCompleto      - Nombre del usuario
+   * @param emailInstitucional  - Email único
+   * @param codigoEstudiantil   - Código único
+   * @param rol                 - Rol del usuario
+   * @param passwordHash        - Hash bcrypt
+   * @param idUsuarioAutor      - ID del usuario que crea
+   * @param programaId          - ID del programa (si rol = ESTUDIANTE)
+   * @param semestreActual      - Semestre (si rol = ESTUDIANTE)
+   * @param jornada             - Jornada (si rol = ESTUDIANTE)
+   * @param matriculaActiva     - Matrícula activa (si rol = ESTUDIANTE)
+   * @param creditosMaxPermitidos - Límite de créditos
+   * @param estadoAcademico    - Estado inicial
+   * @returns {Promise<{idUsuario: number, idEstudiante?: number}>}
+   * @throws {ErrorBaseDatos} Si falla la transacción
+   */
+  async crearUsuarioConPerfilEstudiante(
+    nombreCompleto:         string,
+    emailInstitucional:     string,
+    codigoEstudiantil:      string,
+    rol:                    string,
+    passwordHash:           string,
+    idUsuarioAutor:         number,
+    programaId?:            number,
+    semestreActual?:        number,
+    jornada?:               string,
+    matriculaActiva:        boolean = true,
+    creditosMaxPermitidos:  number = 20,
+    estadoAcademico:        string = 'normal',
+  ): Promise<{ idUsuario: number; idEstudiante?: number }> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // 1. Crear usuario
+      const rolEnum = rol.toUpperCase();
+      const resUsuario = await client.query<{ id_usuario: number }>(
+        `INSERT INTO usuarios
+            (nombre_completo, email_institucional, codigo_estudiantil, 
+             password_hash, rol, primer_login, activo, 
+             created_by, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5::rol_sistema, TRUE, TRUE, $6, NOW(), NOW())
+         RETURNING id_usuario`,
+        [nombreCompleto, emailInstitucional, codigoEstudiantil, passwordHash, rolEnum, idUsuarioAutor],
+      );
+
+      const idUsuarioCreado = resUsuario.rows[0]?.id_usuario ?? 0;
+      if (!idUsuarioCreado) {
+        throw new ErrorBaseDatos('Error al crear usuario');
+      }
+
+      // 2. Si es ESTUDIANTE, crear perfil académico en la misma transacción
+      if (rol.toUpperCase() === 'ESTUDIANTE' && programaId && semestreActual && jornada) {
+        const docAlumno = `DOC_${codigoEstudiantil}`;
+        const codAlumno = `ALU_${codigoEstudiantil}`;
+
+        const resEstudiante = await client.query<{ id: number }>(
+          `INSERT INTO estudiantes
+              (usuario_id, cod_alumno, nombre_completo, doc_alumno, codigo_estudiantil, 
+               programa_id, semestre_actual, jornada,
+               matricula_activa, creditos_inscritos, creditos_max_permitidos,
+               estado_academico, promedio_acumulado,
+               created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10, $11, 0.00, NOW(), NOW())
+           RETURNING id`,
+          [
+            idUsuarioCreado,
+            codAlumno,
+            nombreCompleto,
+            docAlumno,
+            codigoEstudiantil,
+            programaId,
+            semestreActual,
+            jornada,
+            matriculaActiva,
+            creditosMaxPermitidos,
+            estadoAcademico,
+          ],
+        );
+
+        const idEstudianteCreado = resEstudiante.rows[0]?.id ?? 0;
+        if (!idEstudianteCreado) {
+          throw new ErrorBaseDatos('Error al crear perfil de estudiante');
+        }
+
+        await client.query('COMMIT');
+        return { idUsuario: idUsuarioCreado, idEstudiante: idEstudianteCreado };
+      }
+
+      // Si NO es ESTUDIANTE, solo retornar usuario
+      await client.query('COMMIT');
+      return { idUsuario: idUsuarioCreado };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw new ErrorBaseDatos(`Error en transacción: ${(error as Error).message}`);
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Crea un perfil académico de estudiante en la tabla `estudiantes`.
+   * Se llama DESPUÉS de crearUsuario() cuando rol = ESTUDIANTE.
+   * Vincula el usuario con su programa, semestre, jornada e inicializa créditos.
+   *
+   * Cumple HU_DB §4.2 — Tabla estudiantes con todos los campos requeridos.
+   *
+   * @param usuarioId               - ID del usuario creado (foreign key)
+   * @param nombreCompleto          - Nombre del estudiante (para auditoria)
+   * @param codigoEstudiantil       - Código estudiantil (duplicado para compatibilidad)
+   * @param programaId              - ID del programa (1=Ing.Sistemas, 2=Ing.Industrial, 3=Admin)
+   * @param semestreActual          - Semestre actual del estudiante (1-12)
+   * @param jornada                 - Jornada (manana|tarde|noche)
+   * @param matriculaActiva         - Si tiene matrícula activa (default: true)
+   * @param creditosMaxPermitidos   - Límite de créditos (según programa)
+   * @param estadoAcademico        - Estado inicial (default: 'normal')
+   * @returns {Promise<number>} ID del estudiante creado (estudiantes.id)
+   * @throws {ErrorBaseDatos} Si falla la inserción
+   */
+  async crearEstudiante(
+    usuarioId:              number,
+    nombreCompleto:         string,
+    codigoEstudiantil:      string,
+    programaId:             number,
+    semestreActual:         number,
+    jornada:                string,
+    matriculaActiva:        boolean = true,
+    creditosMaxPermitidos:  number = 20,
+    estadoAcademico:        string = 'normal',
+  ): Promise<number> {
+    try {
+      // Generar doc_alumno automático (prefijo + codigo)
+      // Ej: "2025009" → "DOC_2025009"
+      const docAlumno = `DOC_${codigoEstudiantil}`;
+
+      // Generar cod_alumno automático (similar a codigo pero con prefijo ALU)
+      // Ej: "2025009" → "ALU_2025009"
+      const codAlumno = `ALU_${codigoEstudiantil}`;
+
+      const resultado = await pool.query<{ id: number }>(
+        `INSERT INTO estudiantes
+            (usuario_id, cod_alumno, nombre_completo, doc_alumno, codigo_estudiantil, 
+             programa_id, semestre_actual, jornada,
+             matricula_activa, creditos_inscritos, creditos_max_permitidos,
+             estado_academico, promedio_acumulado,
+             created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0, $10, $11, 0.00, NOW(), NOW())
+         RETURNING id`,
+        [
+          usuarioId,
+          codAlumno,
+          nombreCompleto,
+          docAlumno,
+          codigoEstudiantil,
+          programaId,
+          semestreActual,
+          jornada,
+          matriculaActiva,
+          creditosMaxPermitidos,
+          estadoAcademico,
+        ],
+      );
+      return resultado.rows[0]?.id ?? 0;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al crear perfil de estudiante: ${(error as Error).message}`);
+    }
+  }
 }

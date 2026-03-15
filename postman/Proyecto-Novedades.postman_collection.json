@@ -518,264 +518,11 @@
       ]
     },
     {
-      "name": "Solicitudes de Novedad (HU_DB §5)",
-      "description": "Gestion completa de solicitudes academicas.\n\nMotor de validaciones automatico — el campo validacion_json registra cada chequeo.\n\n**Tipos soportados:** adicion_curso | cambio_curso | cambio_jornada | curso_dirigido\n\n**Acceso:** ESTUDIANTE crea y consulta sus propias solicitudes. SECRETARIA y ADMIN gestionan todas.",
+      "name": "Usuarios (HU_001 §CA-01)",
+      "description": "Gestión de usuarios del sistema — Creación con control granular de roles.\n\n**Reglas de autorización:**\n- **ADMIN** → Puede crear: ADMIN, SECRETARIA, ESTUDIANTE\n- **SECRETARIA** → Puede crear: ESTUDIANTE\n- **ESTUDIANTE** → NO puede crear (403)\n\n**Flujo de primer login:**\n1. Usuario creado con `primer_login = TRUE`\n2. Contraseña temporal generada (10 caracteres aleatorios)\n3. Usuario debe obligatoriamente cambiarla en primer acceso\n4. Luego puede acceder al sistema normalmente\n\n**Todos los endpoints requieren autenticación.**",
       "item": [
         {
-          "name": "POST Crear Solicitud — Adicion de Curso",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "",
-                  "if (r.ok) {",
-                  "    pm.test('Status 201 - Solicitud creada', () => pm.response.to.have.status(201));",
-                  "    pm.test('Tiene codigo_solicitud (REQ-AAAA-NNN)', () => {",
-                  "        pm.expect(r.datos.codigo_solicitud).to.match(/^REQ-\\d{4}-\\d{3}$/);",
-                  "    });",
-                  "    pm.test('Estado es PENDIENTE', () => {",
-                  "        pm.expect(r.datos.estado.toUpperCase()).to.eql('PENDIENTE');",
-                  "    });",
-                  "    pm.test('Contiene validacion_json con chequeos', () => {",
-                  "        pm.expect(r.datos.validacion_json).to.have.property('validaciones');",
-                  "        pm.expect(r.datos.validacion_json.validaciones).to.be.an('array').and.not.empty;",
-                  "    });",
-                  "    pm.test('Todos los chequeos de validacion_json pasaron', () => {",
-                  "        const v = r.datos.validacion_json;",
-                  "        pm.expect(v.aprobado).to.be.true;",
-                  "        v.validaciones.forEach(check => {",
-                  "            pm.expect(check.resultado, check.nombre + ': ' + check.detalle).to.be.true;",
-                  "        });",
-                  "    });",
-                  "    if (r.datos?.id) pm.collectionVariables.set('solicitud_id', r.datos.id);",
-                  "} else {",
-                  "    pm.test('422 - Validacion de negocio fallo (esperado si no hay cupos/cruce)', () => {",
-                  "        pm.expect(r.ok).to.be.false;",
-                  "        pm.expect(r.mensaje).to.include('validaciones');",
-                  "    });",
-                  "    console.log('Validacion fallida:', r.mensaje);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 3,\n  \"justificacion\": \"Solicito la adicion del curso Calculo Diferencial grupo nocturno ya que tengo disponibilidad horaria completa y complementa mi formacion en el semestre actual.\",\n  \"periodo_academico\": \"2026-1\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Crea una solicitud de ADICION de curso.\n\nValidaciones ejecutadas (HU_DB §5.3):\n1. creditos_inscritos + nuevos <= creditos_max_permitidos\n2. cupos_ocupados < cupo_maximo en el grupo\n3. Sin cruce de horario con inscripciones activas\n4. La materia no fue aprobada previamente\n\nEl grupo_id 3 = MAT101 G-03 jornada noche (cupos disponibles).\nEl estudiante 2024001 tiene PRG201 y EST301 los lunes y martes. MAT101 noche tambien es lunes 18-20, no cruza con PRG201 lunes 08-10."
-          },
-          "response": [
-            {
-              "name": "201 — Solicitud creada con validacion_json",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente. Quedara en revision por la secretaria academica\",\n  \"datos\": {\n    \"id\": 1,\n    \"codigo_solicitud\": \"REQ-2026-001\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"ADICION\",\n    \"validacion_json\": {\n      \"timestamp\": \"2026-03-01T10:30:00.000Z\",\n      \"tipo_solicitud\": \"adicion_curso\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"creditos_max_permitidos\", \"resultado\": true, \"detalle\": \"Creditos tras adicion: 12 / 20\" },\n        { \"nombre\": \"cupos_disponibles\", \"resultado\": true, \"detalle\": \"Cupos disponibles: 30\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruce de horario con materias inscritas\" },\n        { \"nombre\": \"materia_no_aprobada_previamente\", \"resultado\": true, \"detalle\": \"La materia no ha sido aprobada previamente\" }\n      ]\n    },\n    \"created_at\": \"2026-03-01T10:30:00.000Z\"\n  },\n  \"codigo_estado\": 201\n}"
-            },
-            {
-              "name": "422 — Validacion de negocio fallo",
-              "status": "Unprocessable Entity",
-              "code": 422,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Solicitud rechazada por validaciones: No hay cupos disponibles en el grupo solicitado\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
-            }
-          ]
-        },
-        {
-          "name": "POST Crear Solicitud — Curso Dirigido",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "if (r.ok) {",
-                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "    pm.test('validacion_json.tipo_solicitud = curso_dirigido', () => {",
-                  "        pm.expect(r.datos.validacion_json.tipo_solicitud).to.eql('curso_dirigido');",
-                  "    });",
-                  "} else {",
-                  "    pm.test('Fallo con 422 por validacion negocio', () => pm.response.to.have.status(422));",
-                  "    console.log('Detalle:', r.mensaje);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"curso_dirigido\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito modalidad de curso dirigido para Calculo Diferencial porque no se oferta en la jornada regular del semestre 2026-1. Esta modalidad me permite cursarlo con tutoría personalizada (máximo 3 estudiantes) para asegurar mi aprendizaje.\",\n  \"periodo_academico\": \"2026-1\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Solicita CURSO DIRIGIDO para MAT101 (grupo 1).\n\nValidaciones (HU_DB §5.4):\n1. Curso NO se oferta en el semestre actual (única opción disponible)\n2. Máximo 3 estudiantes inscritos en el grupo\n3. Sin cruce de horario con otras inscritos\n4. Estado académico habilitado (no suspendido)\n\nNOTA: No requiere que la materia haya sido reprobada previamente. Un estudiante puede solicitar un curso dirigido aunque NUNCA lo haya tomado, siempre y cuando NO se oferta en el semestre actual."
-          },
-          "response": [
-            {
-              "name": "201 — Curso Dirigido aprobado por validaciones",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente.\",\n  \"datos\": {\n    \"id\": 2,\n    \"codigo_solicitud\": \"REQ-2026-002\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"CURSO_DIRIGIDO\",\n    \"validacion_json\": {\n      \"tipo_solicitud\": \"curso_dirigido\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"curso_no_ofertado_regular\", \"resultado\": true, \"detalle\": \"El curso no se oferta en la jornada regular del semestre actual\" },\n        { \"nombre\": \"cupos_grupo_dirigido\", \"resultado\": true, \"detalle\": \"Cupos disponibles en grupo dirigido: 2 / 3\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruce de horario con materias inscritas\" },\n        { \"nombre\": \"estado_academico_habilitado\", \"resultado\": true, \"detalle\": \"Estado académico normal permite solicitud de curso dirigido\" }\n      ]\n    }\n  },\n  \"codigo_estado\": 201\n}"
-            }
-          ]
-        },
-        {
-          "name": "POST Crear Solicitud — Cambio de Curso",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "if (r.ok) {",
-                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "    pm.test('validacion_json.tipo_solicitud = cambio_curso', () => {",
-                  "        pm.expect(r.datos.validacion_json.tipo_solicitud).to.eql('cambio_curso');",
-                  "    });",
-                  "    pm.test('Contiene grupo_actual_id y grupo_nuevo_id en validacion_json', () => {",
-                  "        pm.expect(r.datos.validacion_json.validaciones).to.be.an('array').and.not.empty;",
-                  "    });",
-                  "} else {",
-                  "    pm.test('422 - Validacion fallo', () => pm.expect(r.ok).to.be.false);",
-                  "    console.log('Razon:', r.mensaje);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"cambio_curso\",\n  \"grupo_actual_id\": 1,\n  \"grupo_nuevo_id\": 2,\n  \"justificacion\": \"Solicito cambio de grupo de MAT101 de la jornada manana grupo A al grupo B de la misma jornada porque tengo un conflicto con otro curso los miercoles a las 7:00 am y el nuevo grupo tiene clase los viernes.\",\n  \"periodo_academico\": \"2026-1\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Solicita CAMBIO DE CURSO (cambio de grupo).\n\nValidaciones ejecutadas (HU_DB §5.1):\n1. Estudiante inscrito en grupo_actual_id\n2. La materia NO tiene estado 'reprobada'\n3. Estado academico = 'normal'\n4. Cupos disponibles en grupo_nuevo_id\n5. Sin cruce de horario\n\nEjemplo: grupo_actual_id=1 (MAT101 G-01 lunes) → grupo_nuevo_id=2 (MAT101 G-02 miercoles)"
-          },
-          "response": [
-            {
-              "name": "201 — Cambio de curso aprobado",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud de novedad registrada exitosamente\",\n  \"datos\": {\n    \"id\": 3,\n    \"codigo_solicitud\": \"REQ-2026-003\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"CAMBIO_CURSO\",\n    \"validacion_json\": {\n      \"tipo_solicitud\": \"cambio_curso\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"inscripcion_activa\", \"resultado\": true, \"detalle\": \"Estudiante inscrito en grupo_actual_id 1\" },\n        { \"nombre\": \"estado_materia_no_reprobada\", \"resultado\": true, \"detalle\": \"La materia no esta reprobada\" },\n        { \"nombre\": \"estado_academico_normal\", \"resultado\": true, \"detalle\": \"Estado academico normal\" },\n        { \"nombre\": \"cupos_disponibles\", \"resultado\": true, \"detalle\": \"Cupos en grupo nuevo: 26\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruce de horario\" }\n      ]\n    }\n  },\n  \"codigo_estado\": 201\n}"
-            }
-          ]
-        },
-        {
-          "name": "POST Crear Solicitud — Cambio de Jornada",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "if (r.ok) {",
-                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "    pm.test('validacion_json.tipo_solicitud = cambio_jornada', () => {",
-                  "        pm.expect(r.datos.validacion_json.tipo_solicitud).to.eql('cambio_jornada');",
-                  "    });",
-                  "} else {",
-                  "    console.log('Fallo validacion:', r.mensaje);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"cambio_jornada\",\n  \"jornada_nueva\": \"tarde\",\n  \"justificacion\": \"Solicito cambio de jornada de manana a tarde debido a que inicio actividad laboral de medio tiempo en las mananas a partir del presente semestre y necesito reorganizar mi horario academico para poder cumplir con ambas responsabilidades.\",\n  \"periodo_academico\": \"2026-1\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Solicita CAMBIO DE JORNADA de manana a tarde.\n\nValidaciones (HU_DB §5.2):\n1. jornada_nueva != jornada_actual del estudiante\n2. Existen grupos con cupos en la nueva jornada para todas las materias inscritas actualmente"
-          },
-          "response": []
-        },
-        {
-          "name": "POST Crear Solicitud — Limite 3 superado (422)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 422 si ya tiene 3 solicitudes activas', () => {",
-                  "    if (r.ok === false && r.mensaje.includes('maximo de 3')) {",
-                  "        pm.expect(pm.response.code).to.eql(422);",
-                  "    } else {",
-                  "        console.log('Menos de 3 solicitudes activas — se creo exitosamente');",
-                  "    }",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 2,\n  \"justificacion\": \"Solicito adicion del curso para completar mi carga academica del semestre. Esta materia es necesaria para cumplir los creditos requeridos.\",\n  \"periodo_academico\": \"2026-1\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Intenta crear una 4ta solicitud. Si el estudiante ya tiene 3 activas debe fallar con 422."
-          },
-          "response": [
-            {
-              "name": "422 — Limite de 3 solicitudes superado",
-              "status": "Unprocessable Entity",
-              "code": 422,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Ha alcanzado el maximo de 3 solicitudes activas para el periodo 2026-1\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
-            }
-          ]
-        },
-        {
-          "name": "GET Mis Solicitudes — Estudiante",
+          "name": "GET Roles Permitidos",
           "event": [
             {
               "listen": "test",
@@ -785,44 +532,50 @@
                   "const r = pm.response.json();",
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('datos es un array', () => pm.expect(r.datos).to.be.an('array'));",
-                  "if (r.datos.length > 0) {",
-                  "    pm.test('Cada solicitud tiene codigo_solicitud y validacion_json', () => {",
-                  "        r.datos.forEach(s => {",
-                  "            pm.expect(s).to.have.property('codigo_solicitud');",
-                  "        });",
-                  "    });",
-                  "}"
+                  "pm.test('Tiene rol_usuario_autenticado', () => pm.expect(r.datos).to.have.property('rol_usuario_autenticado'));",
+                  "pm.test('Tiene roles_que_puede_crear', () => pm.expect(r.datos).to.have.property('roles_que_puede_crear'));"
                 ]
               }
             }
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
             "url": {
-              "raw": "{{base_url}}/api/solicitudes/mias?periodo=2026-1",
+              "raw": "{{base_url}}/api/usuarios/roles-permitidos",
               "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes", "mias"],
-              "query": [
-                { "key": "periodo", "value": "2026-1", "description": "Filtrar por periodo" },
-                { "key": "estado", "value": "", "description": "Filtrar por estado (opcional)", "disabled": true }
-              ]
+              "path": ["api", "usuarios", "roles-permitidos"]
             },
-            "description": "Lista las solicitudes del estudiante autenticado (solo las propias).\n\nFiltros disponibles:\n- `?periodo=2026-1`\n- `?estado=PENDIENTE`\n- Combinados: `?periodo=2026-1&estado=PENDIENTE`\n\nAcceso: solo ESTUDIANTE."
+            "description": "Consulta qué roles puede crear el usuario autenticado. Útil para pre-cargar dropdowns en formularios.\n\n**Respuesta:**\n- `rol_usuario_autenticado` → rol del usuario que hace la consulta\n- `roles_que_puede_crear` → array de roles permitidos\n- `puede_crear_usuarios` → boolean"
           },
           "response": [
             {
-              "name": "200 — Lista de solicitudes propias",
+              "name": "200 — ADMIN (puede crear todos)",
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitudes obtenidas exitosamente\",\n  \"datos\": [\n    {\n      \"id\": 1,\n      \"codigo_solicitud\": \"REQ-2026-001\",\n      \"tipo_solicitud\": \"ADICION\",\n      \"estado\": \"PENDIENTE\",\n      \"justificacion\": \"Solicito la adicion...\",\n      \"periodo_academico\": \"2026-1\",\n      \"validacion_json\": { \"aprobado\": true, \"validaciones\": [] },\n      \"created_at\": \"2026-03-01T10:30:00.000Z\"\n    }\n  ],\n  \"codigo_estado\": 200\n}"
+              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"admin\",\n    \"roles_que_puede_crear\": [\"ADMIN\", \"SECRETARIA\", \"ESTUDIANTE\"],\n    \"puede_crear_usuarios\": true\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "200 — SECRETARIA (solo ESTUDIANTE)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"secretaria\",\n    \"roles_que_puede_crear\": [\"ESTUDIANTE\"],\n    \"puede_crear_usuarios\": true\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "200 — ESTUDIANTE (sin permisos)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"estudiante\",\n    \"roles_que_puede_crear\": [],\n    \"puede_crear_usuarios\": false\n  },\n  \"codigo_estado\": 200\n}"
             }
           ]
         },
         {
-          "name": "GET Todas las Solicitudes — Secretaria/Admin",
+          "name": "POST Crear Usuario — ADMIN crea SECRETARIA",
           "event": [
             {
               "listen": "test",
@@ -830,450 +583,414 @@
                 "type": "text/javascript",
                 "exec": [
                   "const r = pm.response.json();",
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('datos es array', () => pm.expect(r.datos).to.be.an('array'));",
-                  "if (r.datos.length > 0) {",
-                  "    pm.test('Cada solicitud tiene nombre_estudiante y codigo_estudiantil', () => {",
-                  "        r.datos.forEach(s => {",
-                  "            pm.expect(s).to.have.property('nombre_estudiante');",
-                  "            pm.expect(s).to.have.property('codigo_estudiantil');",
-                  "        });",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('Usuario creado con campos necesarios', () => {",
+                  "        pm.expect(r.datos).to.have.property('id_usuario');",
+                  "        pm.expect(r.datos).to.have.property('nombre_completo');",
+                  "        pm.expect(r.datos).to.have.property('rol');",
+                  "        pm.expect(r.datos.rol).to.equal('secretaria');",
                   "    });",
-                  "    pm.collectionVariables.set('solicitud_id', r.datos[0].id);",
-                  "    console.log('solicitud_id guardado:', r.datos[0].id);",
+                  "    pm.test('⚠️ primer_login = TRUE (debe cambiar password)', () => {",
+                  "        pm.expect(r.datos.primer_login).to.be.true;",
+                  "    });",
+                  "    pm.test('Contiene contraseña temporal', () => {",
+                  "        pm.expect(r.datos.contrasena_temporal).to.be.a('string');",
+                  "        pm.expect(r.datos.contrasena_temporal).to.have.lengthOf(10);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('❌ Error al crear', () => {",
+                  "        console.log('Razon:', r.mensaje);",
+                  "    });",
                   "}"
                 ]
               }
             }
           ],
           "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Diana Marcela López Soto\",\n  \"email_institucional\": \"dlopez@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"SEC002\",\n  \"rol\": \"SECRETARIA\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nCrea una nueva secretaria en el sistema.\n\n**Respuesta:**\n- ✔️ Usuario creado con `primer_login = TRUE`\n- ✔️ Contraseña temporal de 10 caracteres (mostrar UNA sola vez)\n- ✔️ Mensaje instructivo sobre flujo de primer login\n\n**Instrucciones para la nueva secretaria:**\n1. Usar el codigo_estudiantil y contraseña temporal para login\n2. Ir a `POST /api/auth/change-password` para cambiar contraseña\n3. Después puede acceder al sistema"
+          },
+          "response": [
+            {
+              "name": "201 — Secretaria creada exitosamente",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Usuario creado exitosamente. ⚠️ Contraseña temporal generada (ver datos)\",\n  \"datos\": {\n    \"id_usuario\": 12,\n    \"nombre_completo\": \"Diana Marcela López Soto\",\n    \"email_institucional\": \"dlopez@proyectonovedades.edu.co\",\n    \"codigo_estudiantil\": \"SEC002\",\n    \"rol\": \"secretaria\",\n    \"primer_login\": true,\n    \"contrasena_temporal\": \"KmNp8QhL54\",\n    \"mensaje_contrasena\": \"⚠️ CONTRASEÑA TEMPORAL: \\\"KmNp8QhL54\\\"\\nEste usuario DEBE cambiar su contraseña al primer login.\\nLa contraseña no se puede recuperar después. Guárdela de forma segura.\"\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "403 — Sin permisos (rol ESTUDIANTE)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su rol (estudiante) no tiene permisos para crear usuarios. Contacte al administrador\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            },
+            {
+              "name": "409 — Email ya existe",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El email dlopez@proyectonovedades.edu.co ya está registrado en el sistema\",\n  \"datos\": null,\n  \"codigo_estado\": 409\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Usuario — SECRETARIA crea ESTUDIANTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('Usuario ESTUDIANTE creado', () => {",
+                  "        pm.expect(r.datos.rol).to.equal('estudiante');",
+                  "    });",
+                  "    pm.test('⚠️ Mostrar SOLO la contraseña temporal una vez', () => {",
+                  "        const pass = r.datos.contrasena_temporal;",
+                  "        console.log(`IMPORTANTE: Contraseña temporal = ${pass}`);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Error:', () => console.log(r.mensaje));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Juan Pedro Rodríguez García\",\n  \"email_institucional\": \"jrodriguez@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"2025001\",\n  \"rol\": \"ESTUDIANTE\",\n  \"programa_id\": 1,\n  \"semestre_actual\": 3,\n  \"jornada\": \"manana\",\n  \"matricula_activa\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "**Autenticarse como SECRETARIA antes de ejecutar.**\n\nUna secretaria crea un nuevo estudiante en el sistema con su perfil académico.\n\n**Campos obligatorios para ESTUDIANTE (HU_DB §4.2):**\n- `programa_id` (1=Ing.Sistemas, 2=Ing.Industrial, 3=Admin)\n- `semestre_actual` (1-12)\n- `jornada` (manana|tarde|noche)\n- `matricula_activa` (default: true)\n\n**Validaciones:**\n- Nombre solo con letras y espacios\n- Email único (409 si existe)\n- Código estudiantil único (409 si existe)\n- Rol ESTUDIANTE"
+          },
+          "response": [
+            {
+              "name": "201 — Estudiante creado",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Usuario creado exitosamente. ⚠️ Contraseña temporal generada (ver datos)\",\n  \"datos\": {\n    \"id_usuario\": 13,\n    \"nombre_completo\": \"Juan Pedro Rodríguez García\",\n    \"email_institucional\": \"jrodriguez@proyectonovedades.edu.co\",\n    \"codigo_estudiantil\": \"2025001\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": true,\n    \"programa_id\": 1,\n    \"semestre_actual\": 3,\n    \"jornada\": \"manana\",\n    \"matricula_activa\": true,\n    \"contrasena_temporal\": \"AbCdEfGh98\",\n    \"mensaje_contrasena\": \"⚠️ CONTRASEÑA TEMPORAL: \\\"AbCdEfGh98\\\"...\"\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "403 — SECRETARIA solo puede crear ESTUDIANTE",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su rol (secretaria) no tiene permisos para crear usuarios con rol ADMIN. Roles permitidos: ESTUDIANTE\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Usuario — ADMIN crea ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Carlos Alberto Peña Torres\",\n  \"email_institucional\": \"cpena@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"ADMIN002\",\n  \"rol\": \"ADMIN\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nUn administrador crea otro administrador (escalación de privilegios).\n\nUso típico: Designar un segundo admin cuando el primero no está disponible."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Solicitudes de Novedad (HU_DB §5)",
+      "description": "Gestión de solicitudes de novedad académica con validaciones automáticas.",
+      "item": [
+        {
+          "name": "POST Crear Solicitud - Adicion",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 3,\n  \"justificacion\": \"Solicito la adicion del curso\",\n  \"periodo_academico\": \"2026-1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            }
+          }
+        },
+        {
+          "name": "GET Mis Solicitudes",
+          "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/mias",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "mias"]
+            }
+          }
+        },
+        {
+          "name": "GET Todas las Solicitudes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "url": {
               "raw": "{{base_url}}/api/solicitudes?periodo=2026-1",
               "host": ["{{base_url}}"],
               "path": ["api", "solicitudes"],
               "query": [
-                { "key": "periodo", "value": "2026-1" },
-                { "key": "estado", "value": "PENDIENTE", "disabled": true },
-                { "key": "tipo_solicitud", "value": "ADICION", "disabled": true }
+                {
+                  "key": "periodo",
+                  "value": "2026-1"
+                }
               ]
-            },
-            "description": "Lista TODAS las solicitudes del sistema. Solo SECRETARIA y ADMIN.\n\nFiltros: `?estado`, `?periodo`, `?tipo_solicitud`.\n\nIncluve nombre del estudiante y codigo para identificacion rapida.\n\nNOTA: Primero ejecuta 'POST Login — Secretaria' para tener el token correcto."
-          },
-          "response": [
-            {
-              "name": "200 — Todas las solicitudes",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitudes obtenidas exitosamente\",\n  \"datos\": [\n    {\n      \"id\": 1,\n      \"codigo_solicitud\": \"REQ-2026-001\",\n      \"tipo_solicitud\": \"ADICION\",\n      \"estado\": \"PENDIENTE\",\n      \"nombre_estudiante\": \"Carlos Andres Perez Lopez\",\n      \"codigo_estudiantil\": \"2024001\",\n      \"periodo_academico\": \"2026-1\"\n    }\n  ],\n  \"codigo_estado\": 200\n}"
-            },
-            {
-              "name": "403 — Sin permisos (estudiante no puede ver todas)",
-              "status": "Forbidden",
-              "code": 403,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Acceso denegado. Roles permitidos: secretaria, admin\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
             }
-          ]
+          }
         },
         {
-          "name": "PATCH Actualizar Estado — Aprobar",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 200 - Estado actualizado', () => pm.response.to.have.status(200));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('Mensaje indica estado aprobada', () => pm.expect(r.mensaje.toLowerCase()).to.include('aprobada'));"
-                ]
-              }
-            }
-          ],
+          "name": "POST Crear Solicitud - Cambio Curso",
           "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"estado\": \"aprobada\",\n  \"observaciones\": \"Solicitud revisada y validada. El estudiante cumple todos los requisitos academicos para la adicion del curso.\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"tipo_solicitud\": \"cambio_curso\",\n  \"grupo_actual_id\": 1,\n  \"grupo_nuevo_id\": 2,\n  \"justificacion\": \"Solicito cambio de grupo\",\n  \"periodo_academico\": \"2026-1\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/estado",
+              "raw": "{{base_url}}/api/solicitudes",
               "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes", "{{solicitud_id}}", "estado"]
-            },
-            "description": "Aprueba una solicitud pendiente. Solo SECRETARIA y ADMIN.\n\nEstados validos: en_revision | aprobada | rechazada\n\nAl aprobar: se registra aprobada_por (id del usuario que la resuelve) y fecha_resolucion."
-          },
-          "response": [
-            {
-              "name": "200 — Solicitud aprobada",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Estado de la solicitud actualizado a: aprobada\",\n  \"datos\": null,\n  \"codigo_estado\": 200\n}"
+              "path": ["api", "solicitudes"]
             }
-          ]
+          }
         },
         {
-          "name": "PATCH Actualizar Estado — Rechazar",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Mensaje indica rechazada', () => pm.expect(r.mensaje.toLowerCase()).to.include('rechazada'));"
-                ]
-              }
-            }
-          ],
+          "name": "POST Crear Solicitud - Cambio Jornada",
           "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"estado\": \"rechazada\",\n  \"observaciones\": \"No se aprueba la solicitud. El horario del grupo solicitado genera cruce con otra materia activa del estudiante.\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"tipo_solicitud\": \"cambio_jornada\",\n  \"jornada_nueva\": \"tarde\",\n  \"justificacion\": \"Solicito cambio de jornada\",\n  \"periodo_academico\": \"2026-1\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/estado",
+              "raw": "{{base_url}}/api/solicitudes",
               "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes", "{{solicitud_id}}", "estado"]
-            },
-            "description": "Rechaza una solicitud. Solo SECRETARIA y ADMIN."
-          },
-          "response": []
+              "path": ["api", "solicitudes"]
+            }
+          }
         },
         {
-          "name": "PATCH Actualizar Estado — En Revision",
+          "name": "POST Crear Solicitud - Curso Dirigido",
           "request": {
-            "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"estado\": \"en_revision\"\n}",
-              "options": { "raw": { "language": "json" } }
+              "raw": "{\n  \"tipo_solicitud\": \"curso_dirigido\",\n  \"grupo_nuevo_id\": 9,\n  \"justificacion\": \"Solicito curso dirigido\",\n  \"periodo_academico\": \"2026-1\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/estado",
+              "raw": "{{base_url}}/api/solicitudes",
               "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes", "{{solicitud_id}}", "estado"]
-            },
-            "description": "Marca la solicitud en revision sin resolverla aun."
-          },
-          "response": []
+              "path": ["api", "solicitudes"]
+            }
+          }
         },
         {
-          "name": "GET Mis Solicitudes — Sin token (401)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 401 sin token', () => pm.response.to.have.status(401));",
-                  "pm.test('ok es false', () => pm.expect(pm.response.json().ok).to.be.false);"
-                ]
-              }
-            }
-          ],
+          "name": "PATCH Actualizar Estado - Aprobar",
           "request": {
-            "auth": { "type": "noauth" },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes/mias",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes", "mias"]
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"aprobada\",\n  \"observaciones\": \"Solicitud aprobada\"\n}"
             },
-            "description": "Sin Authorization header. Debe responder HTTP 401."
-          },
-          "response": [
-            {
-              "name": "401 — Sin token",
-              "status": "Unauthorized",
-              "code": 401,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Token de autenticacion no proporcionado\",\n  \"datos\": null,\n  \"codigo_estado\": 401\n}"
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/1/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "1", "estado"]
             }
-          ]
+          }
+        },
+        {
+          "name": "PATCH Actualizar Estado - Rechazar",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"rechazada\",\n  \"observaciones\": \"Solicitud rechazada\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/1/estado",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "1", "estado"]
+            }
+          }
+        },
+        {
+          "name": "POST Adjuntar Documento",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_archivo\": \"documento.pdf\",\n  \"archivo_base64\": \"data:application/pdf;base64,JVBERi0xLjQ...\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/estudiantes/solicitudes/1/adjunto",
+              "host": ["{{base_url}}"],
+              "path": ["api", "estudiantes", "solicitudes", "1", "adjunto"]
+            }
+          }
         }
       ]
     },
     {
       "name": "Formulario de Solicitud (HU)",
-      "description": "Endpoints para soportar el Formulario de Solicitud Academica.\n\n**Flujo del formulario:**\n1. `GET /api/estudiantes/perfil` → Pre-cargar nombre, codigo, programa, semestre\n2. `GET /api/grupos?periodo=2026-1` → Poblar dropdowns de grupos\n3. `POST /api/solicitudes` → Enviar la solicitud (con adjunto Base64 opcional)\n4. `POST /api/estudiantes/solicitudes/:id/adjunto` → Subir adjunto por separado si aplica\n\n**Todos los endpoints requieren token de ESTUDIANTE.**",
+      "description": "Endpoints para el formulario de solicitud académica.",
       "item": [
         {
-          "name": "GET Perfil Academico (pre-carga formulario)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('Tiene cod_alumno', () => pm.expect(r.datos).to.have.property('cod_alumno'));",
-                  "pm.test('Tiene nombre_programa', () => pm.expect(r.datos).to.have.property('nombre_programa'));",
-                  "pm.test('Tiene semestre', () => pm.expect(r.datos).to.have.property('semestre'));",
-                  "pm.test('Tiene matricula_activa', () => pm.expect(r.datos).to.have.property('matricula_activa'));"
-                ]
-              }
-            }
-          ],
+          "name": "GET Perfil Academico",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
             ],
             "url": {
               "raw": "{{base_url}}/api/estudiantes/perfil",
               "host": ["{{base_url}}"],
               "path": ["api", "estudiantes", "perfil"]
-            },
-            "description": "Devuelve el perfil academico del estudiante autenticado para pre-cargar la seccion 'Informacion Academica' del formulario.\n\n**Campos devueltos:**\n- `cod_alumno` → 'Codigo Estudiantil'\n- `nombre_completo` → 'Nombre Completo'\n- `nombre_programa` → 'Programa Academico'\n- `semestre` → 'Semestre Actual'\n- `jornada`, `creditos_inscritos`, `estado_academico`\n\n**Requiere:** Token de ESTUDIANTE"
-          },
-          "response": [
-            {
-              "name": "200 — Perfil cargado",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Perfil academico obtenido exitosamente\",\n  \"datos\": {\n    \"cod_alumno\": \"2024001\",\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"email_institucional\": \"c.perez@proyectonovedades.edu.co\",\n    \"semestre\": 5,\n    \"nombre_programa\": \"Ingenieria de Sistemas\",\n    \"jornada\": \"manana\",\n    \"creditos_inscritos\": 9,\n    \"creditos_max_permitidos\": 20,\n    \"estado_academico\": \"normal\",\n    \"matricula_activa\": true\n  },\n  \"codigo_estado\": 200\n}"
-            },
-            {
-              "name": "404 — Sin perfil academico",
-              "status": "Not Found",
-              "code": 404,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"No se encontro el perfil academico. Contacte a la secretaria para vincular su cuenta.\",\n  \"datos\": null,\n  \"codigo_estado\": 404\n}"
             }
-          ]
+          }
         },
         {
-          "name": "GET Grupos Disponibles — Todos (dropdown)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('datos es un array', () => pm.expect(r.datos).to.be.an('array'));",
-                  "if (r.datos.length > 0) {",
-                  "  pm.test('Cada grupo tiene id y nombre_curso', () => {",
-                  "    pm.expect(r.datos[0]).to.have.property('id');",
-                  "    pm.expect(r.datos[0]).to.have.property('nombre_curso');",
-                  "    pm.expect(r.datos[0]).to.have.property('cupos_disponibles');",
-                  "  });",
-                  "}"
-                ]
-              }
-            }
-          ],
+          "name": "GET Grupos Disponibles",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/grupos?periodo=2026-1",
-              "host": ["{{base_url}}"],
-              "path": ["api", "grupos"],
-              "query": [
-                { "key": "periodo", "value": "2026-1", "description": "Periodo academico (requerido)" },
-                { "key": "curso_id", "value": "", "description": "Filtrar por ID de curso (opcional)", "disabled": true },
-                { "key": "jornada", "value": "", "description": "Filtrar por jornada: manana/tarde/noche (opcional)", "disabled": true }
-              ]
-            },
-            "description": "Lista todos los grupos disponibles (cupos > 0) para el periodo 2026-1.\nUsar para poblar el dropdown 'Tipo de Solicitud' y los campos dinamicos del formulario.\n\n**Filtros opcionales:**\n- `curso_id` — Solo grupos de ese curso\n- `jornada` — Solo grupos de esa jornada"
-          },
-          "response": [
-            {
-              "name": "200 — Lista de grupos",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"8 grupo(s) disponible(s) para el periodo 2026-1\",\n  \"datos\": [\n    {\n      \"id\": 1,\n      \"codigo_grupo\": \"G-01\",\n      \"nombre_curso\": \"Calculo Diferencial\",\n      \"cod_curso\": \"MAT101\",\n      \"jornada\": \"manana\",\n      \"dia_semana\": \"lunes\",\n      \"hora_inicio\": \"07:00:00\",\n      \"hora_fin\": \"09:00:00\",\n      \"docente\": \"Dr. Ramon Suarez\",\n      \"aula\": \"Aula-201\",\n      \"cupo_maximo\": 35,\n      \"cupos_ocupados\": 9,\n      \"cupos_disponibles\": 26,\n      \"periodo\": \"2026-1\"\n    }\n  ],\n  \"codigo_estado\": 200\n}"
-            },
-            {
-              "name": "400 — Periodo faltante",
-              "status": "Bad Request",
-              "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El parametro \\\"periodo\\\" es obligatorio. Ej: ?periodo=2026-1\",\n  \"datos\": null,\n  \"codigo_estado\": 400\n}"
-            }
-          ]
-        },
-        {
-          "name": "GET Grupos — Filtrado por curso_id",
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/grupos?periodo=2026-1&curso_id=1",
-              "host": ["{{base_url}}"],
-              "path": ["api", "grupos"],
-              "query": [
-                { "key": "periodo", "value": "2026-1" },
-                { "key": "curso_id", "value": "1", "description": "ID del curso MAT101" }
-              ]
-            },
-            "description": "Lista grupos de un curso especifico. Usar cuando el estudiante selecciona 'Cambio de Curso' para mostrar solo los grupos de esa materia."
-          },
-          "response": []
-        },
-        {
-          "name": "POST Enviar Solicitud CON adjunto Base64",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 201 — Solicitud creada', () => pm.response.to.have.status(201));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('Mensaje de confirmacion correcto', () => pm.expect(r.mensaje).to.include('Solicitud enviada correctamente'));",
-                  "pm.test('Tiene codigo_solicitud', () => pm.expect(r.datos).to.have.property('codigo_solicitud'));",
-                  "pm.test('Tiene validacion_json', () => pm.expect(r.datos).to.have.property('validacion_json'));",
-                  "if (r.datos && r.datos.id) {",
-                  "  pm.collectionVariables.set('solicitud_id', r.datos.id);",
-                  "  console.log('solicitud_id guardado:', r.datos.id);",
-                  "}"
-                ]
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
               }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "Content-Type", "value": "application/json" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito la adicion del curso Calculo Diferencial ya que complementa mi formacion academica actual y tengo disponibilidad horaria para asistir sin inconvenientes.\",\n  \"periodo_academico\": \"2026-1\",\n  \"nombre_adjunto\": \"Horario_Actual_2026.pdf\",\n  \"adjunto_base64\": \"data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPJ4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQo+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDQKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjE5MAolJUVPRgo=\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
             "url": {
-              "raw": "{{base_url}}/api/solicitudes",
+              "raw": "{{base_url}}/api/grupos",
               "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Crea una solicitud de adicion_curso e incluye un documento adjunto en Base64 (PDF minimo real).\n\n**El adjunto es opcional:** Si no se incluye `adjunto_base64` y `nombre_adjunto`, la solicitud se crea sin adjunto.\n\n**El mensaje de confirmacion es:** 'Solicitud enviada correctamente'\n\n**Requiere:** Token ESTUDIANTE con matricula_activa = true"
-          },
-          "response": [
-            {
-              "name": "201 — Solicitud enviada con adjunto",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitud enviada correctamente. Quedara en revision por la secretaria academica\",\n  \"datos\": {\n    \"id\": 5,\n    \"codigo_solicitud\": \"REQ-2026-005\",\n    \"estado\": \"PENDIENTE\",\n    \"tipo_solicitud\": \"adicion_curso\",\n    \"validacion_json\": {\n      \"timestamp\": \"2026-03-07T10:30:00Z\",\n      \"tipo_solicitud\": \"adicion_curso\",\n      \"aprobado\": true,\n      \"validaciones\": [\n        { \"nombre\": \"creditos_max_permitidos\", \"resultado\": true, \"detalle\": \"Creditos tras adicion: 12 / 20\" },\n        { \"nombre\": \"cupos_disponibles\", \"resultado\": true, \"detalle\": \"Cupos disponibles: 26\" },\n        { \"nombre\": \"sin_cruce_horario\", \"resultado\": true, \"detalle\": \"Sin cruces detectados\" },\n        { \"nombre\": \"materia_no_aprobada_previamente\", \"resultado\": true, \"detalle\": \"Materia no aprobada previamente\" }\n      ]\n    },\n    \"adjunto\": {\n      \"id\": 1,\n      \"url\": \"/uploads/solicitudes/5/1709834521000_Horario_Actual_2026.pdf\",\n      \"nombre\": \"1709834521000_Horario_Actual_2026.pdf\"\n    }\n  },\n  \"codigo_estado\": 201\n}"
-            },
-            {
-              "name": "422 — Validaciones fallidas",
-              "status": "Unprocessable Entity",
-              "code": 422,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Solicitud rechazada por validaciones: No hay cupos disponibles en el grupo seleccionado\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+              "path": ["api", "grupos"]
             }
-          ]
-        },
-        {
-          "name": "POST Enviar Solicitud SIN adjunto",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"tipo_solicitud\": \"adicion_curso\",\n  \"grupo_nuevo_id\": 1,\n  \"justificacion\": \"Solicito la adicion del curso Calculo Diferencial ya que complementa mi formacion academica actual y tengo disponibilidad horaria para asistir sin inconvenientes.\",\n  \"periodo_academico\": \"2026-1\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes"]
-            },
-            "description": "Crea una solicitud sin documento adjunto. El campo `adjunto` en la respuesta sera null."
-          },
-          "response": []
-        },
-        {
-          "name": "POST Subir Adjunto a solicitud existente",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 201 — Adjunto guardado', () => pm.response.to.have.status(201));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('Tiene url del archivo', () => pm.expect(r.datos).to.have.property('url'));",
-                  "pm.test('Tiene id del documento', () => pm.expect(r.datos).to.have.property('id'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" },
-              { "key": "Content-Type", "value": "application/json" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre_archivo\": \"Certificado_Medico_2026.pdf\",\n  \"archivo_base64\": \"data:application/pdf;base64,JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovUGFnZXMgMiAwIFIKPj4KZW5kb2JqCjIgMCBvYmoKPDwKL1R5cGUgL1BhZ2VzCi9LaWRzIFszIDAgUl0KL0NvdW50IDEKPJ4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL1BhZ2UKL1BhcmVudCAyIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQo+PgplbmRvYmoKeHJlZgowIDQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDQKL1Jvb3QgMSAwIFIKPj4Kc3RhcnR4cmVmCjE5MAolJUVPRgo=\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/estudiantes/solicitudes/{{solicitud_id}}/adjunto",
-              "host": ["{{base_url}}"],
-              "path": ["api", "estudiantes", "solicitudes", "{{solicitud_id}}", "adjunto"]
-            },
-            "description": "Adjunta un documento a una solicitud ya creada.\n\n**Usa la variable `{{solicitud_id}}`** que se llena automaticamente al crear una solicitud.\n\n**Validaciones:**\n- Tipos permitidos: PDF, JPG, PNG\n- Tamano maximo: 5MB\n- El archivo se guarda en `/uploads/solicitudes/{id}/`\n\n**Requiere:** Token ESTUDIANTE"
-          },
-          "response": [
-            {
-              "name": "201 — Adjunto guardado",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Documento adjunto guardado correctamente\",\n  \"datos\": {\n    \"id\": 2,\n    \"url\": \"/uploads/solicitudes/1/1709834900000_Certificado_Medico_2026.pdf\",\n    \"nombre\": \"1709834900000_Certificado_Medico_2026.pdf\"\n  },\n  \"codigo_estado\": 201\n}"
-            },
-            {
-              "name": "422 — Tipo no permitido",
-              "status": "Unprocessable Entity",
-              "code": 422,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Tipo de archivo no permitido. Se aceptan: PDF, JPG, PNG\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
-            },
-            {
-              "name": "422 — Archivo supera 5MB",
-              "status": "Unprocessable Entity",
-              "code": 422,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El archivo supera el limite de 5MB. Tamano actual: 6.23MB\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
-            }
-          ]
+          }
         }
       ]
     }

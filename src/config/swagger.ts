@@ -183,6 +183,52 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
             },
           },
         },
+        CrearUsuarioBody: {
+          type: 'object',
+          required: ['nombre_completo', 'email_institucional', 'codigo_estudiantil', 'rol'],
+          properties: {
+            nombre_completo: {
+              type:        'string',
+              minLength:   3,
+              maxLength:   200,
+              example:     'Juan Pedro Rodríguez García',
+              description: 'Nombre completo del usuario (solo letras y espacios)',
+            },
+            email_institucional: {
+              type:        'string',
+              format:      'email',
+              maxLength:   150,
+              example:     'jrodriguez@proyectonovedades.edu.co',
+              description: 'Email institucional (único)',
+            },
+            codigo_estudiantil: {
+              type:        'string',
+              minLength:   1,
+              maxLength:   20,
+              example:     '2025001',
+              description: 'Código estudiantil o institucional (único)',
+            },
+            rol: {
+              type:        'string',
+              enum:        ['ESTUDIANTE', 'SECRETARIA', 'ADMIN'],
+              example:     'ESTUDIANTE',
+              description: 'Rol a asignar al nuevo usuario',
+            },
+          },
+        },
+        UsuarioCreado: {
+          type: 'object',
+          properties: {
+            id_usuario:           { type: 'integer', example: 12 },
+            nombre_completo:      { type: 'string',  example: 'Juan Pedro Rodríguez García' },
+            email_institucional:  { type: 'string',  example: 'jrodriguez@proyectonovedades.edu.co' },
+            codigo_estudiantil:   { type: 'string',  example: '2025001' },
+            rol:                  { type: 'string',  example: 'estudiante' },
+            primer_login:         { type: 'boolean', example: true, description: 'Usuario debe cambiar password al primer login' },
+            contrasena_temporal:  { type: 'string',  example: 'KmNp8QhL54', description: '⚠️ Mostrar UNA sola vez al crear' },
+            mensaje_contrasena:   { type: 'string',  description: 'Instructivo sobre qué hacer con la contraseña temporal' },
+          },
+        },
         ValidacionJson: {
           type: 'object',
           properties: {
@@ -367,7 +413,24 @@ El campo \`validacion_json\` registra el snapshot de cada chequeo ejecutado.`,
       },
       {
         name:        'Usuarios',
-        description: 'Gestión de usuarios del sistema (crear secretarias, activar/desactivar). Solo **admin**.',
+        description: `Gestión de usuarios del sistema — Creación con control de roles.
+
+**Reglas de autorización (HU_001 §CA-01):**
+| Rol Usuario | Puede crear | Ejemplos |
+|---|---|---|
+| **ADMIN** | ADMIN, SECRETARIA, ESTUDIANTE | Crear admin adicional, secretarias, estudiantes |
+| **SECRETARIA** | ESTUDIANTE | Crear cuentas de estudiantes |
+| **ESTUDIANTE** | ✗ Ninguno (403) | No permitido |
+
+**Flujo de primer login:**
+1. Usuario creado con \`primer_login = TRUE\`
+2. Contraseña temporal generada automáticamente (mostrar UNA sola vez)
+3. Usuario debe cambiarla obligatoriamente en primer acceso via \`POST /api/auth/change-password\`
+4. Luego puede acceder al sistema normalmente
+
+**Endpoints:**
+- \`POST /api/usuarios\` — Crear nuevo usuario
+- \`GET /api/usuarios/roles-permitidos\` — Obtener roles que puede crear el usuario actual`,
       },
     ],
   },

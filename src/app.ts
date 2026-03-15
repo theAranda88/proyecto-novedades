@@ -11,6 +11,7 @@ import enrutadorAuth              from './routes/authRoutes';
 import enrutadorSolicitudes       from './routes/solicitudRoutes';
 import enrutadorEstudiante        from './routes/estudianteRoutes';
 import enrutadorGrupos            from './routes/grupoRoutes';
+import enrutadorUsuarios          from './routes/usuarioRoutes';
 import { manejadorErroresGlobal } from './middlewares/errorHandler';
 import { configurarSwagger }      from './config/swagger';
 
@@ -146,6 +147,7 @@ app.use('/api/auth',       enrutadorAuth);
 app.use('/api/solicitudes',  enrutadorSolicitudes);
 app.use('/api/estudiantes',  enrutadorEstudiante);
 app.use('/api/grupos',       enrutadorGrupos);
+app.use('/api/usuarios',     enrutadorUsuarios);
 
 // ------------------------------------------------------------
 // RUTA NO ENCONTRADA — 404
