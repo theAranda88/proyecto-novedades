@@ -803,6 +803,24 @@
           }
         },
         {
+          "name": "GET Obtener Detalle de Solicitud",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "1"]
+            },
+            "description": "Obtiene los detalles completos de una solicitud específica por su ID. El estudiante solo puede ver sus propias solicitudes."
+          }
+        },
+        {
           "name": "POST Crear Solicitud - Cambio Curso",
           "request": {
             "method": "POST",

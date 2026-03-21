@@ -24,6 +24,7 @@ export class ControladorSolicitud {
     this.listarMias          = this.listarMias.bind(this);
     this.listarTodas         = this.listarTodas.bind(this);
     this.actualizarEstado    = this.actualizarEstado.bind(this);
+    this.obtenerPorId        = this.obtenerPorId.bind(this);
   }
 
   /**
@@ -155,6 +156,48 @@ export class ControladorSolicitud {
         null,
         200,
       );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/solicitudes/:id
+   * Obtiene los detalles completos de una solicitud específica.
+   * El estudiante solo puede ver sus propias solicitudes.
+   * SECRETARIA y ADMIN pueden ver cualquier solicitud.
+   *
+   * @acceso ESTUDIANTE (su propia solicitud), SECRETARIA, ADMIN
+   */
+  async obtenerPorId(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const usuario = req.usuario!;
+      const solicitudId = Number(id);
+
+      if (isNaN(solicitudId)) {
+        RespuestaUtil.error(res, 'ID de solicitud inválido', 400);
+        return;
+      }
+
+      // Obtener la solicitud
+      const solicitud = await this.servicioSolicitud.obtenerSolicitudPorId(solicitudId);
+
+      if (!solicitud) {
+        RespuestaUtil.error(res, 'Solicitud no encontrada', 404);
+        return;
+      }
+
+      // Validar permiso: ESTUDIANTE solo ve sus propias solicitudes
+      if (usuario.rol.toUpperCase() === 'ESTUDIANTE') {
+        const { codAlumno } = await this.obtenerDatosEstudiante(usuario.id_usuario);
+        if ((solicitud as any).cod_alumno !== codAlumno) {
+          RespuestaUtil.error(res, 'No tiene permisos para ver esta solicitud', 403);
+          return;
+        }
+      }
+
+      RespuestaUtil.exito(res, 'Solicitud obtenida exitosamente', solicitud, 200);
     } catch (error) {
       next(error);
     }

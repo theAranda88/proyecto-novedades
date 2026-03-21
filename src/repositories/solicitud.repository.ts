@@ -480,4 +480,36 @@ export class RepositorioSolicitud {
       throw new ErrorBaseDatos(`Error al buscar grupos por curso y periodo: ${(error as Error).message}`);
     }
   }
+
+  /**
+   * Obtiene los detalles completos de una solicitud específica.
+   *
+   * @param solicitudId - ID de la solicitud
+   * @returns {Promise<object | null>} Detalles de la solicitud o null si no existe
+   */
+  async obtenerPorId(solicitudId: number): Promise<object | null> {
+    try {
+      const resultado = await pool.query(
+        `SELECT id_solicitud        AS id,
+                codigo_solicitud,
+                cod_alumno,
+                tipo_novedad        AS tipo_solicitud,
+                estado_solicitud    AS estado,
+                periodo_academico,
+                motivo_novedad      AS motivo,
+                justificacion_detallada AS justificacion,
+                validacion_json,
+                adjunto_recibo_pago AS adjunto,
+                fecha_creacion      AS created_at,
+                updated_at
+           FROM solicitudes
+          WHERE id_solicitud = $1
+            AND deleted_at   IS NULL`,
+        [solicitudId],
+      );
+      return resultado.rows[0] ?? null;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al obtener solicitud: ${(error as Error).message}`);
+    }
+  }
 }

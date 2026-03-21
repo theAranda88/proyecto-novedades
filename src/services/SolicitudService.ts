@@ -570,5 +570,15 @@ export class ServicioSolicitud {
       aprobadaPor,
     );
   }
+
+  /**
+   * Obtiene los detalles completos de una solicitud por su ID.
+   *
+   * @param solicitudId - ID de la solicitud
+   * @returns {Promise<object|null>} Objeto con los detalles de la solicitud o null si no existe
+   */
+  async obtenerSolicitudPorId(solicitudId: number): Promise<object | null> {
+    return this.repoSolicitud.obtenerPorId(solicitudId);
+  }
 }
 

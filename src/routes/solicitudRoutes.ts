@@ -168,6 +168,61 @@ enrutadorSolicitudes.get(
 
 /**
  * @swagger
+ * /api/solicitudes/{id}:
+ *   get:
+ *     summary: Obtener detalles de una solicitud específica
+ *     description: |
+ *       Obtiene todos los detalles de una solicitud por su ID.
+ *
+ *       **Permisos:**
+ *       - **ESTUDIANTE**: Solo puede ver sus propias solicitudes
+ *       - **SECRETARIA/ADMIN**: Pueden ver cualquier solicitud
+ *     tags:
+ *       - Solicitudes
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID de la solicitud (número)
+ *     responses:
+ *       200:
+ *         description: Solicitud obtenida exitosamente
+ *         content:
+ *           application/json:
+ *             example:
+ *               ok: true
+ *               mensaje: "Solicitud obtenida exitosamente"
+ *               datos:
+ *                 id: 1
+ *                 codigo_solicitud: "REQ-2024-001"
+ *                 cod_alumno: "2024001"
+ *                 tipo_solicitud: "CAMBIO_JORNADA"
+ *                 estado: "EN_REVISION"
+ *                 periodo_academico: "2026-1"
+ *                 justificacion: "Necesito cambiar de jornada..."
+ *                 validacion_json: { timestamp: "...", aprobado: true }
+ *                 created_at: "2023-10-15T10:30:00Z"
+ *       404:
+ *         description: Solicitud no encontrada
+ *       403:
+ *         description: Sin permisos para ver esta solicitud (estudiante viendo solicitud de otro)
+ *       401:
+ *         description: Token ausente o inválido
+ */
+// Endpoint: Obtener detalles de una solicitud específica por ID
+enrutadorSolicitudes.get(
+  '/:id',
+  verificarToken,
+  controladorSolicitud.obtenerPorId,
+);
+
+
+/**
+ * @swagger
  * /api/solicitudes:
  *   get:
  *     summary: Listar todas las solicitudes (Secretaria / Admin)
