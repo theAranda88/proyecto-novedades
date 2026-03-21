@@ -42,6 +42,12 @@ export const esquemaSolicitud = z.object({
     .enum(['manana', 'tarde', 'noche'], { error: 'Jornada nueva inválida' })
     .optional(),
 
+  curso_id: z
+    .number({ error: 'El ID del curso debe ser un número' })
+    .int('Debe ser un número entero')
+    .positive('Debe ser mayor a cero')
+    .optional(),
+
   justificacion: z
     .string({ error: 'La justificación es obligatoria' })
     .min(50, 'La justificación debe tener mínimo 50 caracteres')

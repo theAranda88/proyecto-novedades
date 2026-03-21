@@ -75,7 +75,7 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
 |---|---|
 | **adicion_curso** | Créditos max, cupos, cruce horario, no aprobada previa |
 | **cambio_curso** | Inscripción activa, no reprobada, estado_academico, cupos, cruce horario |
-| **cambio_jornada** | Jornada diferente, grupos con cupos en nueva jornada |
+| **cambio_jornada** | Jornada diferente, grupos con cupos en nueva jornada (todos los cursos o uno específico si incluye curso_id) |
 | **curso_dirigido** | Curso NO se oferta en semestre, máximo 3 estudiantes, sin cruce horario, estado académico |
 
 ---
@@ -260,6 +260,11 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
             grupo_nuevo_id:  { type: 'integer', example: 4 },
             jornada_actual:  { type: 'string', enum: ['manana','tarde','noche'] },
             jornada_nueva:   { type: 'string', enum: ['manana','tarde','noche'] },
+            curso_id: {
+              type: 'integer',
+              example: 1,
+              description: '(Opcional) ID del curso para cambio de jornada específico. Si se omite, se validan todos los cursos inscritos.'
+            },
             justificacion: {
               type:      'string',
               minLength: 50,

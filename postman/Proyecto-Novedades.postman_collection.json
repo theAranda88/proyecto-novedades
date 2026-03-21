@@ -853,6 +853,31 @@
           }
         },
         {
+          "name": "POST Crear Solicitud - Cambio Jornada (Curso Específico)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_solicitud\": \"cambio_jornada\",\n  \"jornada_nueva\": \"tarde\",\n  \"curso_id\": 1,\n  \"justificacion\": \"Necesito cambiar solo Cálculo Diferencial a jornada tarde\",\n  \"periodo_academico\": \"2026-1\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes"]
+            }
+          }
+        },
+        {
           "name": "POST Crear Solicitud - Curso Dirigido",
           "request": {
             "method": "POST",
