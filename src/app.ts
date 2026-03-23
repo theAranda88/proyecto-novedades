@@ -147,7 +147,7 @@ app.use('/api/auth',       enrutadorAuth);
 app.use('/api/solicitudes',  enrutadorSolicitudes);
 app.use('/api/estudiantes',  enrutadorEstudiante);
 app.use('/api/grupos',       enrutadorGrupos);
-app.use('/api/usuarios',     enrutadorUsuarios);
+app.use('/api/usuarios',     enrutadorUsuarios); // Creación + Gestión integral (CRUD)
 
 // ------------------------------------------------------------
 // RUTA NO ENCONTRADA — 404

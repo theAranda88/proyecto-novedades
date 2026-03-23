@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Proyecto Novedades — API v2.0",
-    "description": "Colección completa del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n\n### Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` automáticamente.\n3. Si `primer_login = true` en la respuesta, debes ejecutar **POST Cambio de Contraseña** antes de usar otros endpoints.\n\n### 🔐 Credenciales de prueba (HU_DB seed v3.2)\n**Contraseña universal:** `Password123`\n\n#### Estudiantes\n| Código | Nombre | Programa | Semestre | Cursos | Status |\n|--------|--------|----------|----------|--------|--------|\n| **2024001** | Carlos Andres Perez Lopez | Ing. Sistemas | 3 | PRG201-G01 | ✅ Activo |\n| **2024002** | Maria Fernanda Lopez Torres | Ing. Industrial | 2 | (ninguno) | ✅ Activo |\n| **2024003** | Juan Carlos Martínez García | Ing. Sistemas | 4 | MAT101-G01, EST301-G01 | ✅ Activo |\n| **2024004** | Sofia Alejandra Ruiz Mendez | Ing. Industrial | 3 | PRG201-G02, EST301-G02 | ✅ Activo |\n| **2024005** | Miguel Angel Peña Rodríguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | ✅ Activo |\n| **2024006** | Laura Patricia Sánchez López | Ing. Sistemas | 5 | PRG201-G03, MAT101-G03 | ✅ Activo |\n| **2024007** | David Fernando Torres Castillo | Ing. Industrial | 3 | EST301-G01 | bajo_rendimiento |\n| **2024008** | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | ✅ Activo |\n| **2023010** | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | ❌ INACTIVA |\n\n#### Administrativos\n| Código | Nombre | Rol | Status |\n|--------|--------|-----|--------|\n| **SEC001** | Ana Maria Rodriguez Soto | secretaria | ✅ Activo |\n| **ADMIN001** | Administrador del Sistema | admin | ✅ Activo |\n\n### Reglas de negocio implementadas (HU_DB §5)\n- **ADICION_CURSO**: limite creditos, cupos, cruce horario, no aprobada previa\n- **CAMBIO_CURSO**: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- **CAMBIO_JORNADA**: jornada diferente, grupos disponibles en nueva jornada\n- **CURSO_DIRIGIDO**: curso NO se oferta en semestre actual, máximo 3 estudiantes, sin cruce horario, estado académico\n\n### Seguridad (HU_001)\n- Bloqueo tras **5 intentos fallidos** (15 min) — HTTP 423\n- Cambio obligatorio de contraseña en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en **8h**",
+    "description": "Colección completa del sistema de gestión de novedades académicas.\n\n**Stack:** Node.js + Express + TypeScript + PostgreSQL\n**Autenticación:** Bearer JWT\n**Base URL:** http://localhost:3000\n\n---\n\n### ✨ NOVEDADES v2.0\n**NUEVA:** Gestión Integral de Usuarios (CRUD)\n- GET /api/usuarios — Listar con filtros y paginación\n- GET /api/usuarios/buscar — Búsqueda por nombre/email/código\n- GET /api/usuarios/:id — Obtener usuario completo\n- PUT /api/usuarios/:id — Actualizar (nombre, email)\n- PUT /api/usuarios/:id/desactivar — Desactivar usuario\n- PUT /api/usuarios/:id/reactivar — Reactivar (solo ADMIN)\n- PUT /api/usuarios/:id/estado-matricula — Cambiar matrícula\n\n**Auditoría:** Todos los cambios se registran automáticamente\n\n---\n\n### Instrucciones de uso\n1. Ejecuta **POST Login — Estudiante** → el token se guarda automáticamente en `{{token}}`.\n2. Todos los endpoints protegidos usan `{{token}}` automáticamente.\n3. Si `primer_login = true` en la respuesta, debes ejecutar **POST Cambio de Contraseña** antes de usar otros endpoints.\n4. Para gestión de usuarios: Hacer login como ADMIN (código: ADMIN001) y usar carpeta **📋 Gestión de Usuarios (CRUD)**\n\n### 🔐 Credenciales de prueba (HU_DB seed v3.2)\n**Contraseña universal:** `Password123`\n\n#### Estudiantes\n| Código | Nombre | Programa | Semestre | Cursos | Status |\n|--------|--------|----------|----------|--------|--------|\n| **2024001** | Carlos Andres Perez Lopez | Ing. Sistemas | 3 | PRG201-G01 | ✅ Activo |\n| **2024002** | Maria Fernanda Lopez Torres | Ing. Industrial | 2 | (ninguno) | ✅ Activo |\n| **2024003** | Juan Carlos Martínez García | Ing. Sistemas | 4 | MAT101-G01, EST301-G01 | ✅ Activo |\n| **2024004** | Sofia Alejandra Ruiz Mendez | Ing. Industrial | 3 | PRG201-G02, EST301-G02 | ✅ Activo |\n| **2024005** | Miguel Angel Peña Rodríguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | ✅ Activo |\n| **2024006** | Laura Patricia Sánchez López | Ing. Sistemas | 5 | PRG201-G03, MAT101-G03 | ✅ Activo |\n| **2024007** | David Fernando Torres Castillo | Ing. Industrial | 3 | EST301-G01 | bajo_rendimiento |\n| **2024008** | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | ✅ Activo |\n| **2023010** | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | ❌ INACTIVA |\n\n#### Administrativos\n| Código | Nombre | Rol | Status |\n|--------|--------|-----|--------|\n| **SEC001** | Ana Maria Rodriguez Soto | secretaria | ✅ Activo |\n| **ADMIN001** | Administrador del Sistema | admin | ✅ Activo |\n\n### Reglas de negocio implementadas (HU_DB §5)\n- **ADICION_CURSO**: limite creditos, cupos, cruce horario, no aprobada previa\n- **CAMBIO_CURSO**: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- **CAMBIO_JORNADA**: jornada diferente, grupos disponibles en nueva jornada\n- **CURSO_DIRIGIDO**: curso NO se oferta en semestre actual, máximo 3 estudiantes, sin cruce horario, estado académico\n\n### Seguridad (HU_001)\n- Bloqueo tras **5 intentos fallidos** (15 min) — HTTP 423\n- Cambio obligatorio de contraseña en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en **8h**\n\n### Control de Acceso (Gestión de Usuarios v2.0)\n- **ADMIN:** Acceso completo a todos los usuarios, puede crear/editar/desactivar\n- **SECRETARIA:** Solo gestiona ESTUDIANTE (crear, editar, desactivar)\n- **ESTUDIANTE:** Sin permisos (403 Forbidden)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "proyecto-novedades-v2-2026"
   },
@@ -39,6 +39,18 @@
       "value": "1",
       "type": "string",
       "description": "ID de solicitud para pruebas de actualización de estado."
+    },
+    {
+      "key": "usuario_id",
+      "value": "42",
+      "type": "string",
+      "description": "ID de usuario para pruebas de gestión (editar, desactivar, etc). Cambiar según el usuario a probar."
+    },
+    {
+      "key": "id_estudiante_prueba",
+      "value": "1",
+      "type": "string",
+      "description": "ID de estudiante para pruebas. Usar código 2024001 o 2024002."
     }
   ],
   "item": [
@@ -517,222 +529,7 @@
         }
       ]
     },
-    {
-      "name": "Usuarios (HU_001 §CA-01)",
-      "description": "Gestión de usuarios del sistema — Creación con control granular de roles.\n\n**Reglas de autorización:**\n- **ADMIN** → Puede crear: ADMIN, SECRETARIA, ESTUDIANTE\n- **SECRETARIA** → Puede crear: ESTUDIANTE\n- **ESTUDIANTE** → NO puede crear (403)\n\n**Flujo de primer login:**\n1. Usuario creado con `primer_login = TRUE`\n2. Contraseña temporal generada (10 caracteres aleatorios)\n3. Usuario debe obligatoriamente cambiarla en primer acceso\n4. Luego puede acceder al sistema normalmente\n\n**Todos los endpoints requieren autenticación.**",
-      "item": [
-        {
-          "name": "GET Roles Permitidos",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
-                  "pm.test('Tiene rol_usuario_autenticado', () => pm.expect(r.datos).to.have.property('rol_usuario_autenticado'));",
-                  "pm.test('Tiene roles_que_puede_crear', () => pm.expect(r.datos).to.have.property('roles_que_puede_crear'));"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/usuarios/roles-permitidos",
-              "host": ["{{base_url}}"],
-              "path": ["api", "usuarios", "roles-permitidos"]
-            },
-            "description": "Consulta qué roles puede crear el usuario autenticado. Útil para pre-cargar dropdowns en formularios.\n\n**Respuesta:**\n- `rol_usuario_autenticado` → rol del usuario que hace la consulta\n- `roles_que_puede_crear` → array de roles permitidos\n- `puede_crear_usuarios` → boolean"
-          },
-          "response": [
-            {
-              "name": "200 — ADMIN (puede crear todos)",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"admin\",\n    \"roles_que_puede_crear\": [\"ADMIN\", \"SECRETARIA\", \"ESTUDIANTE\"],\n    \"puede_crear_usuarios\": true\n  },\n  \"codigo_estado\": 200\n}"
-            },
-            {
-              "name": "200 — SECRETARIA (solo ESTUDIANTE)",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"secretaria\",\n    \"roles_que_puede_crear\": [\"ESTUDIANTE\"],\n    \"puede_crear_usuarios\": true\n  },\n  \"codigo_estado\": 200\n}"
-            },
-            {
-              "name": "200 — ESTUDIANTE (sin permisos)",
-              "status": "OK",
-              "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"estudiante\",\n    \"roles_que_puede_crear\": [],\n    \"puede_crear_usuarios\": false\n  },\n  \"codigo_estado\": 200\n}"
-            }
-          ]
-        },
-        {
-          "name": "POST Crear Usuario — ADMIN crea SECRETARIA",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "if (r.ok) {",
-                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "    pm.test('Usuario creado con campos necesarios', () => {",
-                  "        pm.expect(r.datos).to.have.property('id_usuario');",
-                  "        pm.expect(r.datos).to.have.property('nombre_completo');",
-                  "        pm.expect(r.datos).to.have.property('rol');",
-                  "        pm.expect(r.datos.rol).to.equal('secretaria');",
-                  "    });",
-                  "    pm.test('⚠️ primer_login = TRUE (debe cambiar password)', () => {",
-                  "        pm.expect(r.datos.primer_login).to.be.true;",
-                  "    });",
-                  "    pm.test('Contiene contraseña temporal', () => {",
-                  "        pm.expect(r.datos.contrasena_temporal).to.be.a('string');",
-                  "        pm.expect(r.datos.contrasena_temporal).to.have.lengthOf(10);",
-                  "    });",
-                  "} else {",
-                  "    pm.test('❌ Error al crear', () => {",
-                  "        console.log('Razon:', r.mensaje);",
-                  "    });",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre_completo\": \"Diana Marcela López Soto\",\n  \"email_institucional\": \"dlopez@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"SEC002\",\n  \"rol\": \"SECRETARIA\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/usuarios",
-              "host": ["{{base_url}}"],
-              "path": ["api", "usuarios"]
-            },
-            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nCrea una nueva secretaria en el sistema.\n\n**Respuesta:**\n- ✔️ Usuario creado con `primer_login = TRUE`\n- ✔️ Contraseña temporal de 10 caracteres (mostrar UNA sola vez)\n- ✔️ Mensaje instructivo sobre flujo de primer login\n\n**Instrucciones para la nueva secretaria:**\n1. Usar el codigo_estudiantil y contraseña temporal para login\n2. Ir a `POST /api/auth/change-password` para cambiar contraseña\n3. Después puede acceder al sistema"
-          },
-          "response": [
-            {
-              "name": "201 — Secretaria creada exitosamente",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Usuario creado exitosamente. ⚠️ Contraseña temporal generada (ver datos)\",\n  \"datos\": {\n    \"id_usuario\": 12,\n    \"nombre_completo\": \"Diana Marcela López Soto\",\n    \"email_institucional\": \"dlopez@proyectonovedades.edu.co\",\n    \"codigo_estudiantil\": \"SEC002\",\n    \"rol\": \"secretaria\",\n    \"primer_login\": true,\n    \"contrasena_temporal\": \"KmNp8QhL54\",\n    \"mensaje_contrasena\": \"⚠️ CONTRASEÑA TEMPORAL: \\\"KmNp8QhL54\\\"\\nEste usuario DEBE cambiar su contraseña al primer login.\\nLa contraseña no se puede recuperar después. Guárdela de forma segura.\"\n  },\n  \"codigo_estado\": 201\n}"
-            },
-            {
-              "name": "403 — Sin permisos (rol ESTUDIANTE)",
-              "status": "Forbidden",
-              "code": 403,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su rol (estudiante) no tiene permisos para crear usuarios. Contacte al administrador\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
-            },
-            {
-              "name": "409 — Email ya existe",
-              "status": "Conflict",
-              "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El email dlopez@proyectonovedades.edu.co ya está registrado en el sistema\",\n  \"datos\": null,\n  \"codigo_estado\": 409\n}"
-            }
-          ]
-        },
-        {
-          "name": "POST Crear Usuario — SECRETARIA crea ESTUDIANTE",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "const r = pm.response.json();",
-                  "if (r.ok) {",
-                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
-                  "    pm.test('Usuario ESTUDIANTE creado', () => {",
-                  "        pm.expect(r.datos.rol).to.equal('estudiante');",
-                  "    });",
-                  "    pm.test('⚠️ Mostrar SOLO la contraseña temporal una vez', () => {",
-                  "        const pass = r.datos.contrasena_temporal;",
-                  "        console.log(`IMPORTANTE: Contraseña temporal = ${pass}`);",
-                  "    });",
-                  "} else {",
-                  "    pm.test('Error:', () => console.log(r.mensaje));",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre_completo\": \"Juan Pedro Rodríguez García\",\n  \"email_institucional\": \"jrodriguez@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"2025001\",\n  \"rol\": \"ESTUDIANTE\",\n  \"programa_id\": 1,\n  \"semestre_actual\": 3,\n  \"jornada\": \"manana\",\n  \"matricula_activa\": true\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/usuarios",
-              "host": ["{{base_url}}"],
-              "path": ["api", "usuarios"]
-            },
-            "description": "**Autenticarse como SECRETARIA antes de ejecutar.**\n\nUna secretaria crea un nuevo estudiante en el sistema con su perfil académico.\n\n**Campos obligatorios para ESTUDIANTE (HU_DB §4.2):**\n- `programa_id` (1=Ing.Sistemas, 2=Ing.Industrial, 3=Admin)\n- `semestre_actual` (1-12)\n- `jornada` (manana|tarde|noche)\n- `matricula_activa` (default: true)\n\n**Validaciones:**\n- Nombre solo con letras y espacios\n- Email único (409 si existe)\n- Código estudiantil único (409 si existe)\n- Rol ESTUDIANTE"
-          },
-          "response": [
-            {
-              "name": "201 — Estudiante creado",
-              "status": "Created",
-              "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Usuario creado exitosamente. ⚠️ Contraseña temporal generada (ver datos)\",\n  \"datos\": {\n    \"id_usuario\": 13,\n    \"nombre_completo\": \"Juan Pedro Rodríguez García\",\n    \"email_institucional\": \"jrodriguez@proyectonovedades.edu.co\",\n    \"codigo_estudiantil\": \"2025001\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": true,\n    \"programa_id\": 1,\n    \"semestre_actual\": 3,\n    \"jornada\": \"manana\",\n    \"matricula_activa\": true,\n    \"contrasena_temporal\": \"AbCdEfGh98\",\n    \"mensaje_contrasena\": \"⚠️ CONTRASEÑA TEMPORAL: \\\"AbCdEfGh98\\\"...\"\n  },\n  \"codigo_estado\": 201\n}"
-            },
-            {
-              "name": "403 — SECRETARIA solo puede crear ESTUDIANTE",
-              "status": "Forbidden",
-              "code": 403,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su rol (secretaria) no tiene permisos para crear usuarios con rol ADMIN. Roles permitidos: ESTUDIANTE\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
-            }
-          ]
-        },
-        {
-          "name": "POST Crear Usuario — ADMIN crea ADMIN",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre_completo\": \"Carlos Alberto Peña Torres\",\n  \"email_institucional\": \"cpena@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"ADMIN002\",\n  \"rol\": \"ADMIN\"\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{base_url}}/api/usuarios",
-              "host": ["{{base_url}}"],
-              "path": ["api", "usuarios"]
-            },
-            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nUn administrador crea otro administrador (escalación de privilegios).\n\nUso típico: Designar un segundo admin cuando el primero no está disponible."
-          },
-          "response": []
-        }
-      ]
-    },
+
     {
       "name": "Solicitudes de Novedad (HU_DB §5)",
       "description": "Gestión de solicitudes de novedad académica con validaciones automáticas.",
@@ -1034,6 +831,525 @@
               "path": ["api", "grupos"]
             }
           }
+        }
+      ]
+    },
+    {
+      "name": "Gestión de Usuarios (CRUD) — v2.0",
+      "description": "Endpoints de gestión integral de usuarios (crear, listar, obtener, buscar, actualizar, desactivar, reactivar, cambiar matrícula).\n\n**Reglas de autorización:**\n- **ADMIN** → Puede crear: ADMIN, SECRETARIA, ESTUDIANTE\n- **SECRETARIA** → Puede crear: ESTUDIANTE\n- **ESTUDIANTE** → NO puede crear (403)\n\n**Flujo de primer login:**\n1. Usuario creado con `primer_login = TRUE`\n2. Contraseña temporal generada (10 caracteres aleatorios)\n3. Usuario debe obligatoriamente cambiarla en primer acceso\n4. Luego puede acceder al sistema normalmente\n\n**Acceso a otros endpoints:**\n- ADMIN: gestiona todos los usuarios\n- SECRETARIA: gestiona solo ESTUDIANTE\n- ESTUDIANTE: sin permisos (403 Forbidden)\n\n**Auditoría:** Todos los cambios se registran automáticamente en tabla `auditoria_usuarios`\n\n**Validaciones clave:**\n- No puede desactivarse a sí mismo\n- Email debe ser único\n- SECRETARIA solo ve ESTUDIANTE",
+      "item": [
+        {
+          "name": "GET Roles Permitidos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Tiene rol_usuario_autenticado', () => pm.expect(r.datos).to.have.property('rol_usuario_autenticado'));",
+                  "pm.test('Tiene roles_que_puede_crear', () => pm.expect(r.datos).to.have.property('roles_que_puede_crear'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/roles-permitidos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "roles-permitidos"]
+            },
+            "description": "Consulta qué roles puede crear el usuario autenticado. Útil para pre-cargar dropdowns en formularios.\n\n**Respuesta:**\n- `rol_usuario_autenticado` → rol del usuario que hace la consulta\n- `roles_que_puede_crear` → array de roles permitidos\n- `puede_crear_usuarios` → boolean"
+          },
+          "response": [
+            {
+              "name": "200 — ADMIN (puede crear todos)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"admin\",\n    \"roles_que_puede_crear\": [\"ADMIN\", \"SECRETARIA\", \"ESTUDIANTE\"],\n    \"puede_crear_usuarios\": true\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "200 — SECRETARIA (solo ESTUDIANTE)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"secretaria\",\n    \"roles_que_puede_crear\": [\"ESTUDIANTE\"],\n    \"puede_crear_usuarios\": true\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "200 — ESTUDIANTE (sin permisos)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"datos\": {\n    \"rol_usuario_autenticado\": \"estudiante\",\n    \"roles_que_puede_crear\": [],\n    \"puede_crear_usuarios\": false\n  },\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Usuario — ADMIN crea SECRETARIA",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('Usuario creado con campos necesarios', () => {",
+                  "        pm.expect(r.datos).to.have.property('id_usuario');",
+                  "        pm.expect(r.datos).to.have.property('nombre_completo');",
+                  "        pm.expect(r.datos).to.have.property('rol');",
+                  "        pm.expect(r.datos.rol).to.equal('secretaria');",
+                  "    });",
+                  "    pm.test('⚠️ primer_login = TRUE (debe cambiar password)', () => {",
+                  "        pm.expect(r.datos.primer_login).to.be.true;",
+                  "    });",
+                  "    pm.test('Contiene contraseña temporal', () => {",
+                  "        pm.expect(r.datos.contrasena_temporal).to.be.a('string');",
+                  "        pm.expect(r.datos.contrasena_temporal).to.have.lengthOf(10);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('❌ Error al crear', () => {",
+                  "        console.log('Razon:', r.mensaje);",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Diana Marcela López Soto\",\n  \"email_institucional\": \"dlopez@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"SEC002\",\n  \"rol\": \"SECRETARIA\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nCrea una nueva secretaria en el sistema.\n\n**Respuesta:**\n- ✔️ Usuario creado con `primer_login = TRUE`\n- ✔️ Contraseña temporal de 10 caracteres (mostrar UNA sola vez)\n- ✔️ Mensaje instructivo sobre flujo de primer login\n\n**Instrucciones para la nueva secretaria:**\n1. Usar el codigo_estudiantil y contraseña temporal para login\n2. Ir a `POST /api/auth/change-password` para cambiar contraseña\n3. Después puede acceder al sistema"
+          },
+          "response": [
+            {
+              "name": "201 — Secretaria creada exitosamente",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Usuario creado exitosamente. ⚠️ Contraseña temporal generada (ver datos)\",\n  \"datos\": {\n    \"id_usuario\": 12,\n    \"nombre_completo\": \"Diana Marcela López Soto\",\n    \"email_institucional\": \"dlopez@proyectonovedades.edu.co\",\n    \"codigo_estudiantil\": \"SEC002\",\n    \"rol\": \"secretaria\",\n    \"primer_login\": true,\n    \"contrasena_temporal\": \"KmNp8QhL54\",\n    \"mensaje_contrasena\": \"⚠️ CONTRASEÑA TEMPORAL: \\\"KmNp8QhL54\\\"\\nEste usuario DEBE cambiar su contraseña al primer login.\\nLa contraseña no se puede recuperar después. Guárdela de forma segura.\"\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "403 — Sin permisos (rol ESTUDIANTE)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su rol (estudiante) no tiene permisos para crear usuarios. Contacte al administrador\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            },
+            {
+              "name": "409 — Email ya existe",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"El email dlopez@proyectonovedades.edu.co ya está registrado en el sistema\",\n  \"datos\": null,\n  \"codigo_estado\": 409\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Usuario — SECRETARIA crea ESTUDIANTE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "if (r.ok) {",
+                  "    pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "    pm.test('Usuario ESTUDIANTE creado', () => {",
+                  "        pm.expect(r.datos.rol).to.equal('estudiante');",
+                  "    });",
+                  "    pm.test('⚠️ Mostrar SOLO la contraseña temporal una vez', () => {",
+                  "        const pass = r.datos.contrasena_temporal;",
+                  "        console.log(`IMPORTANTE: Contraseña temporal = ${pass}`);",
+                  "    });",
+                  "} else {",
+                  "    pm.test('Error:', () => console.log(r.mensaje));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Juan Pedro Rodríguez García\",\n  \"email_institucional\": \"jrodriguez@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"2025001\",\n  \"rol\": \"ESTUDIANTE\",\n  \"programa_id\": 1,\n  \"semestre_actual\": 3,\n  \"jornada\": \"manana\",\n  \"matricula_activa\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "**Autenticarse como SECRETARIA antes de ejecutar.**\n\nUna secretaria crea un nuevo estudiante en el sistema con su perfil académico.\n\n**Campos obligatorios para ESTUDIANTE (HU_DB §4.2):**\n- `programa_id` (1=Ing.Sistemas, 2=Ing.Industrial, 3=Admin)\n- `semestre_actual` (1-12)\n- `jornada` (manana|tarde|noche)\n- `matricula_activa` (default: true)\n\n**Validaciones:**\n- Nombre solo con letras y espacios\n- Email único (409 si existe)\n- Código estudiantil único (409 si existe)\n- Rol ESTUDIANTE"
+          },
+          "response": [
+            {
+              "name": "201 — Estudiante creado",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Usuario creado exitosamente. ⚠️ Contraseña temporal generada (ver datos)\",\n  \"datos\": {\n    \"id_usuario\": 13,\n    \"nombre_completo\": \"Juan Pedro Rodríguez García\",\n    \"email_institucional\": \"jrodriguez@proyectonovedades.edu.co\",\n    \"codigo_estudiantil\": \"2025001\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": true,\n    \"programa_id\": 1,\n    \"semestre_actual\": 3,\n    \"jornada\": \"manana\",\n    \"matricula_activa\": true,\n    \"contrasena_temporal\": \"AbCdEfGh98\",\n    \"mensaje_contrasena\": \"⚠️ CONTRASEÑA TEMPORAL: \\\"AbCdEfGh98\\\"...\"\n  },\n  \"codigo_estado\": 201\n}"
+            },
+            {
+              "name": "403 — SECRETARIA solo puede crear ESTUDIANTE",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Su rol (secretaria) no tiene permisos para crear usuarios con rol ADMIN. Roles permitidos: ESTUDIANTE\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Crear Usuario — ADMIN crea ADMIN",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Carlos Alberto Peña Torres\",\n  \"email_institucional\": \"cpena@proyectonovedades.edu.co\",\n  \"codigo_estudiantil\": \"ADMIN002\",\n  \"rol\": \"ADMIN\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"]
+            },
+            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nUn administrador crea otro administrador (escalación de privilegios).\n\nUso típico: Designar un segundo admin cuando el primero no está disponible."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Listar Usuarios (ADMIN - Todos)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Tiene estructura de paginación', () => {",
+                  "    pm.expect(r.datos).to.have.property('usuarios');",
+                  "    pm.expect(r.datos).to.have.property('total');",
+                  "    pm.expect(r.datos).to.have.property('pagina');",
+                  "    pm.expect(r.datos).to.have.property('total_paginas');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios?pagina=1&limite=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios"],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1",
+                  "description": "Número de página (default: 1)"
+                },
+                {
+                  "key": "limite",
+                  "value": "20",
+                  "description": "Usuarios por página (default: 20, máx: 100)"
+                },
+                {
+                  "key": "rol",
+                  "value": "ESTUDIANTE",
+                  "description": "Filtrar por rol (ADMIN, SECRETARIA, ESTUDIANTE)",
+                  "disabled": true
+                },
+                {
+                  "key": "activo",
+                  "value": "true",
+                  "description": "Filtrar por estado (true/false)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "**ADMIN:** Ve todos los usuarios\n**SECRETARIA:** Ve solo ESTUDIANTE (filtro automático)\n**ESTUDIANTE:** 403 Forbidden\n\nPasos para probar:\n1. Hacer login como ADMIN (código: ADMIN001)\n2. Ejecutar este endpoint\n3. Probar con filtros: ?rol=ESTUDIANTE&activo=true"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Se listaron 20 de 2840 usuarios\",\n  \"datos\": {\n    \"usuarios\": [\n      {\n        \"id_usuario\": 42,\n        \"nombre_completo\": \"Carlos Rodriguez\",\n        \"email_institucional\": \"carlos@universidad.edu.co\",\n        \"codigo_estudiantil\": \"2024001\",\n        \"rol\": \"estudiante\",\n        \"activo\": true,\n        \"programa_id\": 1,\n        \"jornada\": \"manana\",\n        \"matricula_activa\": true\n      }\n    ],\n    \"total\": 2840,\n    \"pagina\": 1,\n    \"limite\": 20,\n    \"total_paginas\": 142\n  },\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Obtener Usuario por ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Usuario tiene datos completos', () => {",
+                  "    pm.expect(r.datos).to.have.property('id_usuario');",
+                  "    pm.expect(r.datos).to.have.property('nombre_completo');",
+                  "    pm.expect(r.datos).to.have.property('rol');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/42",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "42"]
+            },
+            "description": "Obtiene datos completos de un usuario incluyendo datos académicos si es estudiante.\n\n**Acceso:**\n- ADMIN: obtiene cualquier usuario\n- SECRETARIA: obtiene solo ESTUDIANTE\n- ESTUDIANTE: 403 Forbidden\n\n**Pasos:** Cambiar 42 por el ID real del usuario a consultar"
+          },
+          "response": []
+        },
+        {
+          "name": "GET Buscar Usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna array de resultados', () => {",
+                  "    pm.expect(r.datos.resultados).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/buscar?q=juan&limite=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "buscar"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "juan",
+                  "description": "Término de búsqueda (mínimo 2 caracteres, ILIKE en nombre, email, código)"
+                },
+                {
+                  "key": "limite",
+                  "value": "20",
+                  "description": "Máximo de resultados (default: 20, máx: 50)"
+                }
+              ]
+            },
+            "description": "Busca usuarios por nombre, email o código estudiantil.\n\n**ADMIN:** busca en todos\n**SECRETARIA:** busca solo ESTUDIANTE\n**ESTUDIANTE:** 403 Forbidden"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Actualizar Usuario (Nombre, Email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Retorna id_usuario', () => {",
+                  "    pm.expect(r.datos).to.have.property('id_usuario');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre_completo\": \"Juan Pedro Rodríguez García ACTUALIZADO\",\n  \"email_institucional\": \"juannuevo@universidad.edu.co\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/42",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "42"]
+            },
+            "description": "Actualiza datos básicos del usuario (nombre, email).\n\n**NO permite:**\n- Cambiar rol (error 422)\n- Cambiar código estudiantil\n\n**Validaciones:**\n- Nombre entre 3-200 caracteres\n- Email único\n\n**Auditoría:** Se registra automáticamente quién, cuándo y qué cambió"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Desactivar Usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Usuario desactivado (activo: false)', () => {",
+                  "    pm.expect(r.datos.activo).to.be.false;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/42/desactivar",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "42", "desactivar"]
+            },
+            "description": "Desactiva un usuario. El usuario NO podrá hacer login hasta ser reactivado.\n\n**Validaciones:**\n- No puede desactivarse a sí mismo (error 400)\n- Error si ya está inactivo\n- ADMIN puede desactivar cualquiera\n- SECRETARIA solo desactiva ESTUDIANTE\n\n**Auditoría:** Registra automáticamente el cambio"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Reactivar Usuario (Solo ADMIN)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Usuario reactivado (activo: true)', () => {",
+                  "    pm.expect(r.datos.activo).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/42/reactivar",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "42", "reactivar"]
+            },
+            "description": "Reactiva un usuario que fue desactivado.\n\n**Acceso:** Solo ADMIN (403 si SECRETARIA o ESTUDIANTE)\n\nEl usuario podrá volver a hacer login."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Cambiar Estado de Matrícula (Estudiante)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Matrícula actualizada', () => {",
+                  "    pm.expect(r.datos).to.have.property('matricula_activa');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"matricula_activa\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/usuarios/42/estado-matricula",
+              "host": ["{{base_url}}"],
+              "path": ["api", "usuarios", "42", "estado-matricula"]
+            },
+            "description": "Activa o desactiva la matrícula de un estudiante.\n\nCon matrícula **INACTIVA**, el estudiante NO podrá:\n- Hacer login\n- Crear solicitudes de cambios académicos\n- Acceder al sistema\n\n**Acceso:**\n- ADMIN: puede cambiar cualquier estudiante\n- SECRETARIA: puede cambiar estudiantes\n- ESTUDIANTE: 403 Forbidden\n\n**Auditoría:** Registra el cambio automáticamente"
+          },
+          "response": []
         }
       ]
     }

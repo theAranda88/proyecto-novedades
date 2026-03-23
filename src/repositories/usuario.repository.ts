@@ -486,3 +486,303 @@ export class RepositorioUsuario {
     }
   }
 }
+
+// ============================================================================
+// NUEVOS MÉTODOS PARA GESTIÓN DE USUARIOS (ServicioGestionUsuarios)
+// ============================================================================
+
+export class RepositorioGestionUsuarios {
+
+  /**
+   * Lista usuarios con filtros y paginación.
+   * Aplica soft delete (deleted_at IS NULL) y filtra por rol/activo.
+   *
+   * @param filtros - { rol?, activo?, pagina, limite }
+   * @returns {Promise<{ usuarios: any[], total: number }>
+   */
+  async listarConFiltros(filtros: {
+    rol?: string;
+    activo?: boolean;
+    pagina: number;
+    limite: number;
+  }): Promise<{ usuarios: any[]; total: number }> {
+    try {
+      let query = `
+        SELECT u.id_usuario,
+               u.nombre_completo,
+               u.email_institucional,
+               u.codigo_estudiantil,
+               u.rol,
+               u.activo,
+               u.primer_login,
+               u.created_at,
+               u.updated_at,
+               e.programa_id,
+               e.jornada,
+               e.matricula_activa
+          FROM usuarios u
+          LEFT JOIN estudiantes e ON u.id_usuario = e.usuario_id
+         WHERE u.deleted_at IS NULL
+      `;
+
+      const params: any[] = [];
+      let paramCount = 1;
+
+      if (filtros.rol) {
+        query += ` AND LOWER(u.rol::TEXT) = $${paramCount}`;
+        params.push(filtros.rol.toLowerCase());
+        paramCount++;
+      }
+
+      if (filtros.activo !== undefined) {
+        query += ` AND u.activo = $${paramCount}`;
+        params.push(filtros.activo);
+        paramCount++;
+      }
+
+      // Contar total
+      const countQuery = query.replace(
+        /SELECT.*?FROM/,
+        'SELECT COUNT(*) AS total FROM'
+      );
+      const countResult = await pool.query<{ total: number }>(countQuery, params);
+      const total = parseInt(<string><unknown>countResult.rows[0]?.total ?? '0');
+
+      // Paginar
+      const offset = (filtros.pagina - 1) * filtros.limite;
+      query += ` ORDER BY u.created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
+      params.push(filtros.limite as any, offset as any);
+
+      const resultado = await pool.query(query, params as any[]);
+      return { usuarios: resultado.rows, total };
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al listar usuarios: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Obtiene un usuario completo por ID.
+   * Incluye datos de estudiante si aplica.
+   */
+  async obtenerPorId(idUsuario: number): Promise<any> {
+    try {
+      const resultado = await pool.query(
+        `SELECT u.id_usuario,
+                u.nombre_completo,
+                u.email_institucional,
+                u.codigo_estudiantil,
+                u.rol,
+                u.activo,
+                u.primer_login,
+                u.intentos_fallidos,
+                u.bloqueado_hasta,
+                u.created_at,
+                u.updated_at,
+                e.programa_id,
+                e.jornada,
+                e.matricula_activa,
+                e.estado_academico,
+                e.creditos_inscritos,
+                e.creditos_max_permitidos
+           FROM usuarios u
+           LEFT JOIN estudiantes e ON u.id_usuario = e.usuario_id
+          WHERE u.id_usuario = $1
+            AND u.deleted_at IS NULL
+          LIMIT 1`,
+        [idUsuario],
+      );
+      return resultado.rows[0] ?? null;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al obtener usuario: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Busca usuarios por nombre, email o código estudiantil.
+   */
+  async buscar(termino: string, limite: number = 20): Promise<any[]> {
+    try {
+      const busqueda = `%${termino}%`;
+      const resultado = await pool.query(
+        `SELECT u.id_usuario,
+                u.nombre_completo,
+                u.email_institucional,
+                u.codigo_estudiantil,
+                u.rol,
+                u.activo,
+                e.programa_id,
+                e.jornada
+           FROM usuarios u
+           LEFT JOIN estudiantes e ON u.id_usuario = e.usuario_id
+          WHERE u.deleted_at IS NULL
+            AND (u.nombre_completo ILIKE $1
+              OR u.email_institucional ILIKE $1
+              OR u.codigo_estudiantil ILIKE $1)
+          LIMIT $2`,
+        [busqueda, limite],
+      );
+      return resultado.rows;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al buscar usuarios: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Actualiza datos básicos de un usuario (nombre, email).
+   * Registra auditoría de cambios.
+   */
+  async actualizar(
+    idUsuario: number,
+    datos: { nombre_completo?: string; email_institucional?: string },
+    idAuditoria: number,
+  ): Promise<void> {
+    try {
+      const actualizaciones: string[] = [];
+      const valores: any[] = [idUsuario];
+      let paramCount = 2;
+
+      if (datos.nombre_completo) {
+        actualizaciones.push(`nombre_completo = $${paramCount}`);
+        valores.push(datos.nombre_completo);
+        paramCount++;
+      }
+
+      if (datos.email_institucional) {
+        actualizaciones.push(`email_institucional = $${paramCount}`);
+        valores.push(datos.email_institucional);
+        paramCount++;
+      }
+
+      if (actualizaciones.length === 0) return;
+
+      actualizaciones.push(`updated_at = NOW()`);
+
+      await pool.query(
+        `UPDATE usuarios
+            SET ${actualizaciones.join(', ')}
+          WHERE id_usuario = $1`,
+        valores,
+      );
+
+      // Registrar en auditoría
+      await this.registrarAuditoria(
+        'USUARIO_ACTUALIZADO',
+        idAuditoria,
+        idUsuario,
+        datos,
+      );
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al actualizar usuario: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Desactiva un usuario (soft delete).
+   * Establece activo = false y registra en auditoría.
+   */
+  async desactivar(idUsuario: number, idAuditoria: number): Promise<void> {
+    try {
+      await pool.query(
+        `UPDATE usuarios
+            SET activo = false,
+                updated_at = NOW()
+          WHERE id_usuario = $1`,
+        [idUsuario],
+      );
+
+      await this.registrarAuditoria(
+        'USUARIO_DESACTIVADO',
+        idAuditoria,
+        idUsuario,
+        { activo: false },
+      );
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al desactivar usuario: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Reactiva un usuario (si fue desactivado).
+   */
+  async reactivar(idUsuario: number, idAuditoria: number): Promise<void> {
+    try {
+      await pool.query(
+        `UPDATE usuarios
+            SET activo = true,
+                updated_at = NOW()
+          WHERE id_usuario = $1`,
+        [idUsuario],
+      );
+
+      await this.registrarAuditoria(
+        'USUARIO_REACTIVADO',
+        idAuditoria,
+        idUsuario,
+        { activo: true },
+      );
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al reactivar usuario: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Actualiza el estado de matrícula de un estudiante.
+   */
+  async actualizarEstadoMatricula(
+    idUsuario: number,
+    matriculaActiva: boolean,
+    idAuditoria: number,
+  ): Promise<void> {
+    try {
+      await pool.query(
+        `UPDATE estudiantes
+            SET matricula_activa = $1,
+                updated_at = NOW()
+          WHERE usuario_id = $2`,
+        [matriculaActiva, idUsuario],
+      );
+
+      await this.registrarAuditoria(
+        'ESTADO_MATRICULA_ACTUALIZADO',
+        idAuditoria,
+        idUsuario,
+        { matricula_activa: matriculaActiva },
+      );
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al actualizar estado de matrícula: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Registra eventos de auditoría en tabla (si existe).
+   * Por ahora: compatible con tabla auditoria_usuarios si existe.
+   */
+  private async registrarAuditoria(
+    tipo: string,
+    idUsuarioAudit: number,
+    idUsuarioAfectado: number,
+    datosAntes: any,
+  ): Promise<void> {
+    try {
+      // Verificar si tabla existe
+      const checkTable = await pool.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables 
+          WHERE table_name = 'auditoria_usuarios'
+        )
+      `);
+
+      if (checkTable.rows[0].exists) {
+        await pool.query(
+          `INSERT INTO auditoria_usuarios
+              (tipo_evento, usuario_id_auditor, usuario_id_afectado, datos_antes, created_at)
+           VALUES ($1, $2, $3, $4, NOW())`,
+          [tipo, idUsuarioAudit, idUsuarioAfectado, JSON.stringify(datosAntes)],
+        );
+      }
+    } catch (error) {
+      // Log silencioso si falla auditoría (no rompe la operación principal)
+      console.warn(`Advertencia: Error al registrar auditoría: ${(error as Error).message}`);
+    }
+  }
+}

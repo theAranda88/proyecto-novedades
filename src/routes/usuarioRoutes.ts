@@ -1,13 +1,26 @@
 // src/routes/usuarioRoutes.ts
-// Rutas para gestión de usuarios — Creación y consulta de permisos
+// Rutas para gestión de usuarios — Creación + Gestión integral (CRUD)
+//
+// ESTRUCTURA:
+// - POST   /api/usuarios/                    → Crear usuario (ServicioCreacionUsuarios)
+// - GET    /api/usuarios/roles-permitidos    → Obtener permisos (ServicioCreacionUsuarios)
+// - GET    /api/usuarios                     → Listar usuarios (ServicioGestionUsuarios)
+// - GET    /api/usuarios/buscar              → Buscar usuarios (ServicioGestionUsuarios)
+// - GET    /api/usuarios/:id                 → Obtener usuario (ServicioGestionUsuarios)
+// - PUT    /api/usuarios/:id                 → Actualizar usuario (ServicioGestionUsuarios)
+// - PUT    /api/usuarios/:id/desactivar      → Desactivar usuario (ServicioGestionUsuarios)
+// - PUT    /api/usuarios/:id/reactivar       → Reactivar usuario (ServicioGestionUsuarios)
+// - PUT    /api/usuarios/:id/estado-matricula → Cambiar matrícula (ServicioGestionUsuarios)
 
 import { Router }                               from 'express';
 import { ControladorUsuario }                  from '../controllers/UsuarioController';
+import { ControladorGestionUsuarios }          from '../controllers/GestionUsuariosController';
 import { validarEsquema, verificarToken }     from '../middlewares/authMiddleware';
 import { esquemaCrearUsuario }                from '../schemas/usuario.schema';
 
 const enrutadorUsuarios  = Router();
 const controladorUsuario = new ControladorUsuario();
+const controladorGestion = new ControladorGestionUsuarios();
 
 /**
  * @swagger
@@ -51,7 +64,7 @@ const controladorUsuario = new ControladorUsuario();
  *       - Rol debe ser ESTUDIANTE, SECRETARIA o ADMIN
  *
  *     tags:
- *       - Usuarios
+ *       - Gestión de Usuarios
  *     security:
  *       - BearerAuth: []
  *     requestBody:
@@ -176,7 +189,7 @@ enrutadorUsuarios.post(
  *       **Ejemplo:** Un usuario con rol **SECRETARIA** verá que solo puede crear **ESTUDIANTE**.
  *
  *     tags:
- *       - Usuarios
+ *       - Gestión de Usuarios
  *     security:
  *       - BearerAuth: []
  *     responses:
@@ -232,6 +245,281 @@ enrutadorUsuarios.get(
   verificarToken,
   controladorUsuario.obtenerRolesPermitidos,
 );
+
+// ============================================================================
+// RUTAS DE GESTIÓN DE USUARIOS (ServicioGestionUsuarios)
+// ============================================================================
+
+/**
+ * @swagger
+ * /api/usuarios:
+ *   get:
+ *     summary: Listar usuarios con filtros y paginación
+ *     description: |
+ *       Devuelve un listado paginado de usuarios del sistema.
+ *
+ *       ### Acceso:
+ *       - **ADMIN**: Ve todos los usuarios
+ *       - **SECRETARIA**: Ve solo ESTUDIANTE
+ *       - **ESTUDIANTE**: ✗ 403 Forbidden
+ *
+ *       ### Filtros disponibles:
+ *       - `rol`: Filtrar por rol (ADMIN, SECRETARIA, ESTUDIANTE)
+ *       - `activo`: true o false
+ *       - `pagina`: Número de página (default: 1)
+ *       - `limite`: Usuarios por página (default: 20, máx: 100)
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: pagina
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - name: limite
+ *         in: query
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *           maximum: 100
+ *       - name: rol
+ *         in: query
+ *         schema:
+ *           type: string
+ *           enum: [ADMIN, SECRETARIA, ESTUDIANTE]
+ *       - name: activo
+ *         in: query
+ *         schema:
+ *           type: boolean
+ *     responses:
+ *       200:
+ *         description: Lista de usuarios obtenida exitosamente
+ *       403:
+ *         description: Sin permisos
+ */
+enrutadorUsuarios.get('', verificarToken, controladorGestion.listarUsuarios);
+
+/**
+ * @swagger
+ * /api/usuarios/buscar:
+ *   get:
+ *     summary: Buscar usuarios por nombre, email o código
+ *     description: |
+ *       Busca usuarios que coincidan con el término en:
+ *       - Nombre completo (búsqueda ILIKE)
+ *       - Email institucional
+ *       - Código estudiantil
+ *
+ *       ### Acceso:
+ *       - **ADMIN**: Busca en todos
+ *       - **SECRETARIA**: Busca solo ESTUDIANTE
+ *       - **ESTUDIANTE**: ✗ 403 Forbidden
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: q
+ *         in: query
+ *         required: true
+ *         schema:
+ *           type: string
+ *           minLength: 2
+ *     responses:
+ *       200:
+ *         description: Resultados de búsqueda
+ *       400:
+ *         description: Término demasiado corto
+ */
+enrutadorUsuarios.get('/buscar', verificarToken, controladorGestion.buscarUsuarios);
+
+/**
+ * @swagger
+ * /api/usuarios/{id}:
+ *   get:
+ *     summary: Obtener datos completos de un usuario
+ *     description: |
+ *       Retorna todos los datos del usuario incluyendo datos académicos si es estudiante.
+ *
+ *       ### Acceso:
+ *       - **ADMIN**: Ve cualquier usuario
+ *       - **SECRETARIA**: Ve solo ESTUDIANTE
+ *       - **ESTUDIANTE**: ✗ 403 Forbidden
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Datos del usuario
+ *       404:
+ *         description: Usuario no encontrado
+ */
+enrutadorUsuarios.get('/:id', verificarToken, controladorGestion.obtenerUsuario);
+
+/**
+ * @swagger
+ * /api/usuarios/{id}:
+ *   put:
+ *     summary: Actualizar datos de un usuario (nombre, email)
+ *     description: |
+ *       Actualiza datos básicos del usuario.
+ *       NO permite cambiar rol ni código estudiantil.
+ *
+ *       ### Acceso:
+ *       - **ADMIN**: Edita cualquier usuario
+ *       - **SECRETARIA**: Edita solo ESTUDIANTE
+ *       - **ESTUDIANTE**: ✗ 403 Forbidden
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               nombre_completo:
+ *                 type: string
+ *               email_institucional:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Usuario actualizado exitosamente
+ *       400:
+ *         description: Datos inválidos
+ *       404:
+ *         description: Usuario no encontrado
+ */
+enrutadorUsuarios.put('/:id', verificarToken, controladorGestion.actualizarUsuario);
+
+/**
+ * @swagger
+ * /api/usuarios/{id}/desactivar:
+ *   put:
+ *     summary: Desactivar un usuario
+ *     description: |
+ *       Marca un usuario como inactivo (activo = false).
+ *       El usuario NO podrá hacer login hasta ser reactivado.
+ *
+ *       ### Validaciones:
+ *       - No puede desactivarse a sí mismo
+ *       - Registra auditoría automáticamente
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Usuario desactivado exitosamente
+ *       400:
+ *         description: No puede desactivarse a sí mismo
+ *       404:
+ *         description: Usuario no encontrado
+ */
+enrutadorUsuarios.put('/:id/desactivar', verificarToken, controladorGestion.desactivarUsuario);
+
+/**
+ * @swagger
+ * /api/usuarios/{id}/reactivar:
+ *   put:
+ *     summary: Reactivar un usuario (solo ADMIN)
+ *     description: |
+ *       Reactiva un usuario que fue desactivado.
+ *       El usuario podrá volver a hacer login.
+ *
+ *       ### Acceso:
+ *       - **ADMIN**: ✓ Puede reactivar
+ *       - **SECRETARIA**: ✗ 403 Forbidden
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Usuario reactivado exitosamente
+ *       403:
+ *         description: Sin permisos (solo ADMIN)
+ */
+enrutadorUsuarios.put('/:id/reactivar', verificarToken, controladorGestion.reactivarUsuario);
+
+/**
+ * @swagger
+ * /api/usuarios/{id}/estado-matricula:
+ *   put:
+ *     summary: Cambiar estado de matrícula de un estudiante
+ *     description: |
+ *       Activa o desactiva la matrícula de un estudiante.
+ *
+ *       ### Acceso:
+ *       - **ADMIN**: ✓ Cambiar cualquier estudiante
+ *       - **SECRETARIA**: ✓ Cambiar estudiantes
+ *       - **ESTUDIANTE**: ✗ 403 Forbidden
+ *
+ *     tags:
+ *       - Gestión de Usuarios
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - matricula_activa
+ *             properties:
+ *               matricula_activa:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Estado de matrícula actualizado
+ *       400:
+ *         description: Usuario no es estudiante
+ *       404:
+ *         description: Usuario no encontrado
+ */
+enrutadorUsuarios.put('/:id/estado-matricula', verificarToken, controladorGestion.actualizarEstadoMatricula);
 
 export default enrutadorUsuarios;
 
