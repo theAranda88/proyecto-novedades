@@ -2,7 +2,7 @@
   "name": "proyecto-novedades",
   "version": "1.0.0",
   "description": "Sistema de gestión de novedades académicas",
-  "main": "dist/server.js",
+  "main": "dist/api/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "build": "npx tsc",

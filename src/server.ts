@@ -17,9 +17,11 @@ const IS_VERCEL = !!process.env.VERCEL;
  */
 async function iniciarServidor(): Promise<void> {
   try {
-    // Verificar conexión a PostgreSQL antes de levantar el servidor
-    const verificacion = await pool.query('SELECT NOW()');
-    console.log('✓ Conexión a PostgreSQL verificada:', verificacion.rows[0].now);
+    // Verificar conexión a PostgreSQL antes de levantar el servidor (solo en desarrollo)
+    if (!IS_VERCEL) {
+      const verificacion = await pool.query('SELECT NOW()');
+      console.log('✓ Conexión a PostgreSQL verificada:', verificacion.rows[0].now);
+    }
 
     if (!IS_VERCEL) {
       app.listen(PUERTO, () => {
@@ -32,7 +34,9 @@ async function iniciarServidor(): Promise<void> {
     }
   } catch (error) {
     console.error('✗ Error al iniciar el servidor:', (error as Error).message);
-    process.exit(1);
+    if (!IS_VERCEL) {
+      process.exit(1);
+    }
   }
 }
 
@@ -48,11 +52,5 @@ if (!IS_VERCEL) {
  */
 export default app;
 
-/**
- * Para desarrollo local sin Vercel:
- * npm run dev     — usa nodemon + ts-node
- * npm run build   — compila a dist/
- * npm start       — ejecuta dist/server.js
- */
 
 
