@@ -1,12 +1,11 @@
 {
   "version": 2,
-  "name": "proyecto-novedades",
   "buildCommand": "npm run build",
+  "installCommand": "npm install",
   "framework": "express",
   "env": {
     "NODE_ENV": "production"
   },
-  "public": false,
   "functions": {
     "src/server.ts": {
       "memory": 1024,
@@ -45,16 +44,5 @@
         }
       ]
     }
-  ],
-  "ignore": [
-    "node_modules",
-    ".git",
-    ".gitignore",
-    "*.md",
-    "scripts",
-    "migrations",
-    "postman"
-  ],
-  "installCommand": "npm install"
+  ]
 }
-
