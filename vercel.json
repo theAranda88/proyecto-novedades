@@ -1,12 +1,32 @@
 {
   "version": 2,
-  "buildCommand": "npm install && npx tsc",
+  "buildCommand": "npm run build",
   "installCommand": "npm install --include=dev",
   "framework": "express",
   "env": {
-    "NODE_ENV": "production",
-    "PORT": "3000"
+    "NODE_ENV": "production"
   },
+  "functions": {
+    "api/index.ts": {
+      "runtime": "nodejs18.x",
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.ts"
+    },
+    {
+      "src": "/uploads/(.*)",
+      "dest": "/api/index.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/index.ts"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
