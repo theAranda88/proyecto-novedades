@@ -1,32 +1,3 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install --include=dev",
-  "outputDirectory": "dist",
-  "framework": "express",
-  "env": {
-    "NODE_ENV": "production"
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/api/index.ts",
-      "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-    }
-  ],
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        },
-        {
-          "key": "Content-Type",
-          "value": "application/json"
-        }
-      ]
-    }
-  ]
+  "version": 2
 }
