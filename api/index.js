@@ -1,9 +1,11 @@
 // api/index.js
 // Handler serverless para Vercel
-// Exporta la aplicación Express compilada desde dist/
+// Importa y exporta la aplicación Express compilada
 
-const app = require('../dist/src/app').default || require('../dist/src/app');
+const appModule = require('../dist/src/app');
+const app = appModule.default || appModule;
 
 module.exports = app;
+
 
 
