@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "name": "proyecto-novedades",
+  "buildCommand": "npm run build",
+  "framework": "express",
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "envPrefix": "",
+  "public": false,
+  "functions": {
+    "src/server.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/src/server.ts"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/src/server.ts"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
+    }
+  ],
+  "ignore": [
+    "node_modules",
+    ".git",
+    ".gitignore",
+    "*.md",
+    "scripts",
+    "migrations",
+    "postman"
+  ],
+  "installCommand": "npm install"
+}
+
