@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
-  "installCommand": "npm install",
+  "buildCommand": "npm install && npx tsc",
+  "installCommand": "npm install --include=dev",
   "framework": "express",
   "env": {
     "NODE_ENV": "production",

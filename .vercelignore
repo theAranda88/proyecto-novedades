@@ -5,46 +5,39 @@
 .gitignore
 .github
 
-# Dependencias locales
-node_modules/
+# Dependencias locales (npm install las maneja)
 .npm
 
-# IDE & Editor
+# IDE & Editor (no afecta el build)
 .idea/
 .vscode/
 *.swp
 *.swo
 *.swn
-.DS_Store
 
-# Ambiente local
+# Ambiente local (no incluir en deploy)
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Archivos de compilación
-dist/
-*.tsbuildinfo
-
-# Documentación
+# Documentación (no afecta el runtime)
 *.md
 README.md
 DEPLOYMENT_GUIDE.md
+ANALISIS_MIGRACIONES.md
+VALIDACION_MIGRACIONES.md
+INFORME_RAILWAY_ACTUAL.md
+SOLUCION_ERROR_BUILD.md
 
-# Testing
+# Testing (no necesarios en prod)
 *.test.ts
 *.spec.ts
 __tests__/
 coverage/
 
-# Base de datos local
-*.sql
-migrations/
-
-# Scripts locales
-scripts/
+# Scripts locales (ejecutados en local, no en prod)
 postman/
 
 # Archivos temporales
@@ -55,7 +48,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Vercel
+# NO EXCLUIR (necesarios):
+# - dist/          ← Código compilado
+# - migrations/    ← Scripts SQL
+# - scripts/       ← runMigrations.js (ejecutado en build)
+# - node_modules/  ← Vercel lo maneja con npm install
+
+# Vercel config
 .vercel
 .vercelignore
+
+
 

@@ -5,10 +5,9 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
-    "build": "tsc && echo 'Build completed successfully'",
+    "build": "npx tsc",
     "start": "node dist/server.js",
     "migrate": "node scripts/runMigrations.js",
-    "postbuild": "echo 'PostBuild: Migraciones se ejecutarán en producción si DATABASE_URL está configurada'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "private": true,
@@ -23,9 +22,8 @@
     "pg": "^8.19.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
+    "zod": "^4.3.6",
+    "typescript": "^5.9.3",
     "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
@@ -33,9 +31,10 @@
     "@types/node": "^25.3.3",
     "@types/pg": "^8.18.0",
     "@types/swagger-jsdoc": "^6.0.4",
-    "@types/swagger-ui-express": "^4.1.8",
+    "@types/swagger-ui-express": "^4.1.8"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.14",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "ts-node": "^10.9.2"
   }
 }
