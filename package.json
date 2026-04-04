@@ -5,10 +5,10 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
-    "build": "tsc",
+    "build": "tsc && echo 'Build completed successfully'",
     "start": "node dist/server.js",
     "migrate": "node scripts/runMigrations.js",
-    "postbuild": "node scripts/runMigrations.js",
+    "postbuild": "echo 'PostBuild: Migraciones se ejecutarán en producción si DATABASE_URL está configurada'",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "private": true,

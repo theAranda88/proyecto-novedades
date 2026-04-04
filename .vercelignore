@@ -1,0 +1,61 @@
+# Vercel — Ignorar archivos que no son necesarios para el build
+
+# Control de versiones
+.git
+.gitignore
+.github
+
+# Dependencias locales
+node_modules/
+.npm
+
+# IDE & Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# Ambiente local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Archivos de compilación
+dist/
+*.tsbuildinfo
+
+# Documentación
+*.md
+README.md
+DEPLOYMENT_GUIDE.md
+
+# Testing
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+
+# Base de datos local
+*.sql
+migrations/
+
+# Scripts locales
+scripts/
+postman/
+
+# Archivos temporales
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Vercel
+.vercel
+.vercelignore
+

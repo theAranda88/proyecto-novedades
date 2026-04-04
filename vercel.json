@@ -4,24 +4,9 @@
   "installCommand": "npm install",
   "framework": "express",
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "PORT": "3000"
   },
-  "functions": {
-    "src/server.ts": {
-      "memory": 1024,
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/src/server.ts"
-    },
-    {
-      "source": "/uploads/(.*)",
-      "destination": "/src/server.ts"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
