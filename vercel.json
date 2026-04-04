@@ -6,7 +6,6 @@
   "env": {
     "NODE_ENV": "production"
   },
-  "envPrefix": "",
   "public": false,
   "functions": {
     "src/server.ts": {
