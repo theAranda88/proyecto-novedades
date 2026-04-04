@@ -5,19 +5,27 @@
 .gitignore
 .github
 
-# Dependencias locales (npm install las maneja)
-.npm
-
-# IDE & Editor (no afecta el build)
+# IDE & Editor
 .idea/
 .vscode/
-*.swp
-*.swo
-*.swn
 
-# Ambiente local (no incluir en deploy)
-.env
-.env.local
+# Archivos de documentación (no necesarios en build)
+*.md
+CAMBIOS_REALIZADOS.md
+DEPLOYMENT_GUIDE.md
+
+# Scripts (no se ejecutan en Vercel)
+scripts/
+
+# Migraciones y datos (no se necesitan en Vercel)
+migrations/
+uploads/
+postman/
+*.sql
+
+# Logs y temporales
+*.log
+.DS_Store
 .env.development.local
 .env.test.local
 .env.production.local
