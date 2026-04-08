@@ -168,3 +168,5 @@ $RECYCLE.BIN/
 *.postman_environment.json
 #  La colección SÍ se sube al repo (es documentación)
 !postman/*.postman_collection.json
+.vercel
+.env*.local

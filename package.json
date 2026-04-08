@@ -2,16 +2,16 @@
   "name": "proyecto-novedades",
   "version": "1.0.0",
   "description": "Sistema de gestión de novedades académicas",
-  "main": "dist/api/index.js",
+
+  "main": "dist/index.js",
   "scripts": {
     "dev": "nodemon --watch src --ext ts --exec ts-node src/server.ts",
     "build": "npx tsc",
-    "start": "node dist/server.js",
+    "start": "node dist/index.js",
     "migrate": "node scripts/runMigrations.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "private": true,
-  "description": "Sistema de gestión de novedades académicas - v1.0.0",
   "dependencies": {
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
