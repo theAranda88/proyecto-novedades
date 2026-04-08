@@ -27,9 +27,10 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        'script-src': ["'self'", "'unsafe-inline'"],
+        'script-src': ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        'style-src':  ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
         'img-src':    ["'self'", 'data:', 'https:'],
-        'style-src':  ["'self'", "'unsafe-inline'"],
+        'connect-src': ["'self'", "https://cdnjs.cloudflare.com"],
       },
     },
   }),
