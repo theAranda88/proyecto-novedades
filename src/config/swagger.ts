@@ -562,6 +562,6 @@ export function configurarSwagger(app: Express): void {
     `);
   });
 
-  console.log(` Swagger UI disponible en: http://localhost:\${process.env.PORT ?? 3000}/api-docs`);
+  console.log(` Swagger UI disponible en: http://localhost:${process.env.PORT ?? 3000}/api-docs`);
 }
 

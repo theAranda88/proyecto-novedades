@@ -79,7 +79,8 @@ app.use(
 );
 
 // ------------------------------------------------------------
-// SWAGGER UI — Documentación interactiva en /api/docs
+// SWAGGER UI — Documentación interactiva en /api-docs
+// DEBE SER ANTES del manejador 404
 // ------------------------------------------------------------
 configurarSwagger(app);
 
