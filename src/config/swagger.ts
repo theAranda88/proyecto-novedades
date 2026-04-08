@@ -486,37 +486,27 @@ export const especificacionSwagger = swaggerJSDoc(opcionesSwaggerJSDoc);
  */
 export function configurarSwagger(app: Express): void {
   // Opciones de visualización de Swagger UI
+  // Según documentación oficial: https://github.com/scottie1984/swagger-ui-express
   const opcionesUI: swaggerUi.SwaggerUiOptions = {
-    customSiteTitle: 'Proyecto Novedades - Documentacion API',
-    customCss: `
-      .swagger-ui .topbar { background-color: #1a1a2e; }
-      .swagger-ui .topbar-wrapper .link span { display: none; }
-      .swagger-ui .topbar-wrapper::after {
-        content: 'Proyecto Novedades - API v1.0.0';
-        color: white;
-        font-size: 1.2rem;
-        font-weight: bold;
-        margin-left: 1rem;
-      }
-    `,
+    customSiteTitle: 'Proyecto Novedades - API Documentation',
     swaggerOptions: {
       persistAuthorization: true,
       displayRequestDuration: true,
       filter: true,
       docExpansion: 'list',
       defaultModelsExpandDepth: 2,
+      url: '/api-docs.json',
     },
   };
 
-  // Servir Swagger UI en /api-docs usando middleware
+  // FORMA CORRECTA: serve y setup en el MISMO app.use()
   app.use(
     '/api-docs',
-    swaggerUi.serve
+    swaggerUi.serve,
+    swaggerUi.setup(especificacionSwagger, opcionesUI)
   );
 
-  app.get('/api-docs', swaggerUi.setup(especificacionSwagger, opcionesUI));
-
-  // Endpoint que expone el JSON de la especificacion OpenAPI
+  // Endpoint JSON para que Swagger cargue la especificación
   app.get('/api-docs.json', (_req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(especificacionSwagger);

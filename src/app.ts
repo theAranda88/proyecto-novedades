@@ -79,18 +79,18 @@ app.use(
   }),
 );
 
-// ------------------------------------------------------------
-// SWAGGER UI — Documentación interactiva en /api-docs
-// DEBE SER ANTES del manejador 404
-// ------------------------------------------------------------
+// --------
+// SWAGGER UI — Documentacion interactiva en /api-docs
+// Debe estar AQUI: despues de middlewares globales, ANTES de rutas
+// --------
 configurarSwagger(app);
 
-// Redirigir raíz "/" a documentación
+// Redirigir raiz "/" a documentacion
 app.get('/', (_req, res) => {
   res.redirect('/api-docs');
 });
 
-// ------------------------------------------------------------
+// --------
 // RATE LIMITING — Limita intentos de login (10 por 15 min)
 // ------------------------------------------------------------
 const limitadorLogin = rateLimit({
