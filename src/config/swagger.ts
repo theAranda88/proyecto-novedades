@@ -16,76 +16,98 @@ const opcionesSwaggerJSDoc: swaggerJSDoc.Options = {
     info: {
       title:       'Proyecto Novedades — API',
       version:     '1.0.0',
-      description: `Sistema de gestión de novedades académicas — Proyecto Novedades (HU_DB v1.0).
+      description: `Sistema de gestión de novedades académicas — Proyecto Novedades v1.0.0
 
-**Stack:** Node.js · Express · TypeScript · PostgreSQL
+Stack: Node.js · Express · TypeScript · PostgreSQL · Railway
 
-**Autenticación:** Bearer JWT — Ejecuta \`POST /api/auth/login\` para obtener el token, luego haz clic en **Authorize** e ingresa: \`Bearer <tu_token>\`
+Environments disponibles:
+- DESARROLLO: http://localhost:3000
+- PRODUCCION: https://proyecto-novedades-six.vercel.app (Vercel)
+- PROXIMO: https://api.proyectonovedades.edu.co (Dominio personalizado)
+
+Autenticación: Bearer JWT — Ejecuta POST /api/auth/login para obtener el token, luego haz clic en Authorize e ingresa: Bearer <tu_token>
 
 ---
 
-### 🔐 Credenciales de Prueba
+ESTADO DEL DEPLOYMENT
 
-**Contraseña universal para TODOS:** \`Password123\`
+| Aspecto | Valor |
+|---------|-------|
+| Plataforma | Vercel (Serverless) |
+| Base de Datos | PostgreSQL en Railway |
+| Estado | En Producción |
+| URL Publica | https://proyecto-novedades-six.vercel.app |
+| Documentacion | https://proyecto-novedades-six.vercel.app/api-docs |
+| Health Check | GET /api/health |
 
-#### Estudiantes (para crear solicitudes)
-| Código | Nombre | Programa | Semestre | Cursos | Estado |
+---
+
+CREDENCIALES DE PRUEBA
+
+Contraseña universal para TODOS: Password123
+
+ESTUDIANTES (para crear solicitudes)
+
+| Codigo | Nombre | Programa | Semestre | Cursos | Estado |
 |--------|--------|----------|----------|--------|--------|
-| **2024001** | Carlos Andres Perez Lopez | Ingenieria Sistemas | 3 | PRG201-G01 | normal |
-| **2024002** | Maria Fernanda Lopez Torres | Ingenieria Industrial | 2 | (ninguno) | normal |
-| **2024003** | Juan Carlos Martínez García | Ingenieria Sistemas | 4 | MAT101-G01, EST301-G01 | normal |
-| **2024004** | Sofia Alejandra Ruiz Mendez | Ingenieria Industrial | 3 | PRG201-G02, EST301-G02 | normal |
-| **2024005** | Miguel Angel Peña Rodríguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | normal |
-| **2024006** | Laura Patricia Sánchez López | Ingenieria Sistemas | 5 | PRG201-G03, MAT101-G03 | normal |
-| **2024007** | David Fernando Torres Castillo | Ingenieria Industrial | 3 | EST301-G01 | bajo_rendimiento |
-| **2024008** | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | normal |
-| **2023010** | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | ❌ Matricula INACTIVA |
+| 2024001 | Carlos Andres Perez Lopez | Ingenieria Sistemas | 3 | PRG201-G01 | normal |
+| 2024002 | Maria Fernanda Lopez Torres | Ingenieria Industrial | 2 | (ninguno) | normal |
+| 2024003 | Juan Carlos Martinez Garcia | Ingenieria Sistemas | 4 | MAT101-G01, EST301-G01 | normal |
+| 2024004 | Sofia Alejandra Ruiz Mendez | Ingenieria Industrial | 3 | PRG201-G02, EST301-G02 | normal |
+| 2024005 | Miguel Angel Pena Rodriguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | normal |
+| 2024006 | Laura Patricia Sanchez Lopez | Ingenieria Sistemas | 5 | PRG201-G03, MAT101-G03 | normal |
+| 2024007 | David Fernando Torres Castillo | Ingenieria Industrial | 3 | EST301-G01 | bajo_rendimiento |
+| 2024008 | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | normal |
+| 2023010 | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | Matricula INACTIVA |
 
-#### Personal Administrativo
-| Código | Nombre | Rol |
-|--------|--------|-----|
-| **SEC001** | Ana Maria Rodriguez Soto | secretaria |
-| **ADMIN001** | Administrador del Sistema | admin |
+PERSONAL ADMINISTRATIVO
 
----
-
-### Roles del sistema
-
-| Rol | Descripción |
-|---|---|
-| **estudiante** | Radica solicitudes de novedad. Requiere matricula_activa = TRUE |
-| **secretaria** | Atiende, aprueba o rechaza solicitudes |
-| **admin** | Acceso total + gestión de usuarios |
+| Codigo | Nombre | Rol | Status |
+|--------|--------|-----|--------|
+| SEC001 | Ana Maria Rodriguez Soto | secretaria | Activo |
+| ADMIN001 | Administrador del Sistema | admin | Activo |
 
 ---
 
-### Flujo de autenticación (HU_001)
+ROLES DEL SISTEMA
 
-1. \`POST /api/auth/login\` con \`codigo_estudiantil\` + \`password\`
-2. Si \`primer_login = true\`: usar el token en \`POST /api/auth/change-password\` para cambiar contraseña temporal
-3. Si \`primer_login = false\`: usar el token en todos los demás endpoints
+| Rol | Descripcion | Permisos |
+|---|---|---|
+| estudiante | Radica solicitudes de novedad | Crear solicitudes, ver propias solicitudes |
+| secretaria | Atiende, aprueba o rechaza solicitudes | Gestionar solicitudes, crear estudiantes |
+| admin | Acceso total + gestion de usuarios | CRUD completo, todas las solicitudes |
 
 ---
 
-### Motor de validaciones (HU_DB §5)
+FLUJO DE AUTENTICACION (HU_001)
 
-Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`validacion_json\`:
+1. POST /api/auth/login con codigo_estudiantil + password
+2. Si primer_login = true: usar el token en POST /api/auth/change-password para cambiar contrasena temporal
+3. Si primer_login = false: usar el token en todos los demas endpoints
+4. Token expira en 8 horas
+5. Bloqueo de cuenta tras 5 intentos fallidos por 15 minutos
+
+---
+
+MOTOR DE VALIDACIONES (HU_DB S5)
+
+Al crear una solicitud se ejecutan validaciones automaticas y se guarda validacion_json:
 
 | Tipo | Validaciones |
 |---|---|
-| **adicion_curso** | Créditos max, cupos, cruce horario, no aprobada previa |
-| **cambio_curso** | Inscripción activa, no reprobada, estado_academico, cupos, cruce horario |
-| **cambio_jornada** | Jornada diferente, grupos con cupos en nueva jornada (todos los cursos o uno específico si incluye curso_id) |
-| **curso_dirigido** | Curso NO se oferta en semestre, máximo 3 estudiantes, sin cruce horario, estado académico |
+| adicion_curso | Creditos max, cupos, cruce horario, no aprobada previa |
+| cambio_curso | Inscripcion activa, no reprobada, estado_academico, cupos, cruce horario |
+| cambio_jornada | Jornada diferente, grupos con cupos en nueva jornada |
+| curso_dirigido | Curso NO se oferta en semestre, maximo 3 estudiantes, sin cruce horario |
 
 ---
 
-### Formato de respuesta uniforme
+FORMATO DE RESPUESTA UNIFORME
 
 \`\`\`json
 {
   "ok": true | false,
-  "mensaje": "Descripción del resultado",
+  "mensaje": "Descripcion del resultado",
   "datos": { ... } | null,
   "codigo_estado": 200
 }
@@ -98,11 +120,15 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
     servers: [
       {
         url:         'http://localhost:3000',
-        description: 'Servidor de Desarrollo',
+        description: 'Desarrollo Local',
+      },
+      {
+        url:         'https://proyecto-novedades-six.vercel.app',
+        description: 'Produccion - Vercel',
       },
       {
         url:         'https://api.proyectonovedades.edu.co',
-        description: ' Servidor de Producción',
+        description: 'Produccion - Dominio Personalizado (Proximo)',
       },
     ],
     // Esquema de seguridad JWT para el botón "Authorize" de Swagger UI
@@ -375,9 +401,9 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
       },
       {
         name:        'Autenticacion',
-        description: `Endpoints de inicio de sesión y gestión de tokens JWT. **Rutas públicas — no requieren token.**
+        description: `Endpoints de inicio de sesión y gestión de tokens JWT. Rutas públicas — no requieren token.
 
-**Usuarios de prueba (codigo_estudiantil / contraseña):**
+Usuarios de prueba (codigo_estudiantil / contraseña):
 | Código | Contraseña | Rol | Estado |
 |---|---|---|---|
 | 2024001 | Password123 | estudiante | activo |
@@ -388,54 +414,54 @@ Al crear una solicitud se ejecutan validaciones automáticas y se guarda \`valid
       },
       {
         name:        'Solicitudes',
-        description: `Gestión de novedades académicas según HU_DB §5.
+        description: `Gestión de novedades académicas según HU_DB S5.
 
-**Acceso por rol:**
-- **estudiante** — Crea y consulta sus propias solicitudes
-- **secretaria** — Ve todas, aprueba/rechaza/observa
-- **admin** — Acceso total
+Acceso por rol:
+- estudiante — Crea y consulta sus propias solicitudes
+- secretaria — Ve todas, aprueba/rechaza/observa
+- admin — Acceso total
 
-**Validaciones automáticas (motor de validaciones HU_DB §5):**
-- **CAMBIO_CURSO**: inscripción activa, estado no reprobada, estado_academico normal, cupos, cruce horario
-- **CAMBIO_JORNADA**: jornada diferente, grupos con cupos en nueva jornada
-- **ADICION_CURSO**: creditos_max, cupos, cruce horario, materia no aprobada previamente
-- **CURSO_DIRIGIDO**: reprobada previa, numero_intentos >= 1, estado_academico habilitado
+Validaciones automáticas (motor de validaciones HU_DB S5):
+- CAMBIO_CURSO: inscripción activa, estado no reprobada, estado_academico normal, cupos, cruce horario
+- CAMBIO_JORNADA: jornada diferente, grupos con cupos en nueva jornada
+- ADICION_CURSO: creditos_max, cupos, cruce horario, materia no aprobada previamente
+- CURSO_DIRIGIDO: reprobada previa, numero_intentos >= 1, estado_academico habilitado
 
-El campo \`validacion_json\` registra el snapshot de cada chequeo ejecutado.`,
+El campo validacion_json registra el snapshot de cada chequeo ejecutado.`,
       },
       {
         name:        'Estudiantes',
         description: `Endpoints del módulo estudiante para el formulario de solicitud.
 
-**GET /api/estudiantes/perfil** — Pre-carga automática de la sección "Información Académica":
+GET /api/estudiantes/perfil — Pre-carga automática de la sección "Información Académica":
 - nombre_completo, cod_alumno, nombre_programa, semestre, jornada
 
-**GET /api/grupos** — Dropdowns del formulario:
+GET /api/grupos — Dropdowns del formulario:
 - Lista grupos disponibles (cupos > 0) filtrados por periodo, curso_id o jornada
 
-**POST /api/estudiantes/solicitudes/:id/adjunto** — Adjuntar documento:
+POST /api/estudiantes/solicitudes/:id/adjunto — Adjuntar documento:
 - Acepta PDF, JPG, PNG en Base64. Máximo 5MB por archivo.`,
       },
       {
         name:        'Usuarios',
         description: `Gestión de usuarios del sistema — Creación con control de roles.
 
-**Reglas de autorización (HU_001 §CA-01):**
+Reglas de autorización (HU_001 CA-01):
 | Rol Usuario | Puede crear | Ejemplos |
 |---|---|---|
-| **ADMIN** | ADMIN, SECRETARIA, ESTUDIANTE | Crear admin adicional, secretarias, estudiantes |
-| **SECRETARIA** | ESTUDIANTE | Crear cuentas de estudiantes |
-| **ESTUDIANTE** | ✗ Ninguno (403) | No permitido |
+| ADMIN | ADMIN, SECRETARIA, ESTUDIANTE | Crear admin adicional, secretarias, estudiantes |
+| SECRETARIA | ESTUDIANTE | Crear cuentas de estudiantes |
+| ESTUDIANTE | Ninguno (403) | No permitido |
 
-**Flujo de primer login:**
-1. Usuario creado con \`primer_login = TRUE\`
+Flujo de primer login:
+1. Usuario creado con primer_login = TRUE
 2. Contraseña temporal generada automáticamente (mostrar UNA sola vez)
-3. Usuario debe cambiarla obligatoriamente en primer acceso via \`POST /api/auth/change-password\`
+3. Usuario debe cambiarla obligatoriamente en primer acceso via POST /api/auth/change-password
 4. Luego puede acceder al sistema normalmente
 
-**Endpoints:**
-- \`POST /api/usuarios\` — Crear nuevo usuario
-- \`GET /api/usuarios/roles-permitidos\` — Obtener roles que puede crear el usuario actual`,
+Endpoints:
+- POST /api/usuarios — Crear nuevo usuario
+- GET /api/usuarios/roles-permitidos — Obtener roles que puede crear el usuario actual`,
       },
     ],
   },
