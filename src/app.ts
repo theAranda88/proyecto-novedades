@@ -85,6 +85,11 @@ app.use(
 // ------------------------------------------------------------
 configurarSwagger(app);
 
+// Redirigir raíz "/" a documentación
+app.get('/', (_req, res) => {
+  res.redirect('/api-docs');
+});
+
 // ------------------------------------------------------------
 // RATE LIMITING — Limita intentos de login (10 por 15 min)
 // ------------------------------------------------------------

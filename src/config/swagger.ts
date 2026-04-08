@@ -485,81 +485,41 @@ export const especificacionSwagger = swaggerJSDoc(opcionesSwaggerJSDoc);
  * @param app - Instancia de la aplicación Express
  */
 export function configurarSwagger(app: Express): void {
+  // Opciones de visualización de Swagger UI
+  const opcionesUI: swaggerUi.SwaggerUiOptions = {
+    customSiteTitle: 'Proyecto Novedades - Documentacion API',
+    customCss: `
+      .swagger-ui .topbar { background-color: #1a1a2e; }
+      .swagger-ui .topbar-wrapper .link span { display: none; }
+      .swagger-ui .topbar-wrapper::after {
+        content: 'Proyecto Novedades - API v1.0.0';
+        color: white;
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-left: 1rem;
+      }
+    `,
+    swaggerOptions: {
+      persistAuthorization: true,
+      displayRequestDuration: true,
+      filter: true,
+      docExpansion: 'list',
+      defaultModelsExpandDepth: 2,
+    },
+  };
+
+  // Servir Swagger UI en /api-docs usando middleware
+  app.use(
+    '/api-docs',
+    swaggerUi.serve
+  );
+
+  app.get('/api-docs', swaggerUi.setup(especificacionSwagger, opcionesUI));
+
   // Endpoint que expone el JSON de la especificacion OpenAPI
-  app.get('/api/docs.json', (_req, res) => {
+  app.get('/api-docs.json', (_req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.send(especificacionSwagger);
-  });
-
-  // Servir Swagger UI como HTML estatico en /api-docs
-  // Esto funciona mejor en Vercel serverless que el middleware tradicional
-  app.get('/api-docs', (_req, res) => {
-    res.setHeader('Content-Type', 'text/html; charset=UTF-8');
-    res.send(`
-      <!DOCTYPE html>
-      <html lang="es">
-        <head>
-          <meta charset="UTF-8">
-          <title>Proyecto Novedades - Documentacion API</title>
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.1.3/swagger-ui.min.css">
-          <style>
-            html {
-              box-sizing: border-box;
-              overflow: -moz-scrollbars-vertical;
-              overflow-y: scroll;
-            }
-            *, *:before, *:after {
-              box-sizing: inherit;
-            }
-            body {
-              margin: 0;
-              padding: 0;
-            }
-            .topbar {
-              background-color: #1a1a2e !important;
-              padding: 10px;
-              color: white;
-            }
-            .topbar h1 {
-              margin: 0;
-              font-size: 1.5rem;
-            }
-          </style>
-        </head>
-        <body>
-          <div id="swagger-ui"></div>
-          <script src="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.1.3/swagger-ui.min.js"></script>
-          <script>
-            window.onload = function() {
-              window.ui = SwaggerUIBundle({
-                url: "/api-docs.json",
-                dom_id: '#swagger-ui',
-                presets: [
-                  SwaggerUIBundle.presets.apis,
-                  SwaggerUIBundle.SwaggerUIStandalonePreset
-                ],
-                layout: "BaseLayout",
-                persistAuthorization: true,
-                displayRequestDuration: true,
-                filter: true,
-                docExpansion: "list",
-                defaultModelsExpandDepth: 2,
-                onComplete: function() {
-                  const topbar = document.querySelector('.topbar');
-                  if (topbar) {
-                    const h1 = topbar.querySelector('h1');
-                    if (h1) {
-                      h1.textContent = 'Proyecto Novedades - Documentacion API v1.0.0';
-                    }
-                  }
-                }
-              })
-            }
-          </script>
-        </body>
-      </html>
-    `);
   });
 
   console.log(` Swagger UI disponible en: http://localhost:${process.env.PORT ?? 3000}/api-docs`);
