@@ -279,6 +279,11 @@ enrutadorSolicitudes.get(
  *       - `en_revision` → `aprobada`, `rechazada`
  *       - `aprobada` / `rechazada` → ❌ Estados terminales, no se puede cambiar
  *
+ *       **Campo `observaciones`:**
+ *       - ⚠️ **OBLIGATORIO** cuando `estado = aprobada` o `estado = rechazada` (mínimo 10 chars)
+ *       - Opcional cuando `estado = en_revision`
+ *       - Se guarda en `justificacion_detallada` y aparece en el historial del detalle
+ *
  *       La operación es **transaccional (ACID)**: si falla la notificación, se hace ROLLBACK.
  *     tags:
  *       - Solicitudes

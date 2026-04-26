@@ -320,11 +320,15 @@ FORMATO DE RESPUESTA UNIFORME
             estado: {
               type: 'string',
               enum: ['en_revision', 'aprobada', 'rechazada'],
+              description: 'Nuevo estado de la solicitud',
             },
             observaciones: {
               type:      'string',
+              minLength: 10,
               maxLength: 1000,
-              example:   'Solicitud válida. Se procede con la adición del curso.',
+              description: '⚠️ **OBLIGATORIO** cuando estado = aprobada | rechazada. ' +
+                           'Se guarda como resolución y aparece en historial del detalle.',
+              example: 'Solicitud válida. Se procede con la aprobación del cambio de grupo.',
             },
           },
         },

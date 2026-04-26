@@ -608,18 +608,22 @@ export class ServicioSolicitud {
       this.validarTransicionEstado(estadoActual, datos.estado);
 
       // Paso 3: Actualizar solicitud (dentro de transacción)
-      // Columnas reales en BD: estado_solicitud, updated_by, updated_at, id_solicitud
-      // aprobada_por y fecha_resolucion NO existen en BD desplegada — se usa updated_by/updated_at
+      // Columnas reales en BD: estado_solicitud, justificacion_detallada, updated_by, updated_at
+      // - observaciones → justificacion_detallada (campo existente en BD)
+      // - aprobada_por y fecha_resolucion NO existen → se usa updated_by / updated_at
       const ahora = new Date();
       await cliente.query(
         `UPDATE solicitudes
-            SET estado_solicitud = $1,
-                motivo_novedad   = COALESCE($2, motivo_novedad),
-                updated_by       = $3,
-                updated_at       = $4
+            SET estado_solicitud      = $1,
+                justificacion_detallada = CASE
+                  WHEN $2::TEXT IS NOT NULL THEN $2::TEXT
+                  ELSE justificacion_detallada
+                END,
+                updated_by             = $3,
+                updated_at             = $4
           WHERE id_solicitud = $5 AND deleted_at IS NULL`,
         [
-          datos.estado,
+          datos.estado.toUpperCase(),
           datos.observaciones ?? null,
           aprobadaPor,
           ahora,
@@ -638,7 +642,6 @@ export class ServicioSolicitud {
           solicitudId,
           this.generarTituloNotificacion(datos.estado),
           this.generarMensajeNotificacion(datos.estado, datos.observaciones),
-          ahora,
         ],
       );
 
@@ -674,17 +677,21 @@ export class ServicioSolicitud {
    */
   private validarTransicionEstado(estadoActual: string, estadoNuevo: string): void {
     const transicionesValidas: Record<string, string[]> = {
-      pendiente: ['en_revision', 'aprobada', 'rechazada'],
+      pendiente:   ['en_revision', 'aprobada', 'rechazada'],
       en_revision: ['aprobada', 'rechazada'],
-      aprobada: [],    // Terminal
-      rechazada: [],   // Terminal
+      aprobada:    [],   // Terminal
+      rechazada:   [],   // Terminal
     };
 
-    const permitidas = transicionesValidas[estadoActual] ?? [];
+    // La BD guarda en MAYÚSCULAS (PENDIENTE, APROBADA…) — normalizar para comparar
+    const actualNorm = estadoActual.toLowerCase();
+    const nuevoNorm  = estadoNuevo.toLowerCase();
+    const permitidas = transicionesValidas[actualNorm] ?? [];
 
-    if (!permitidas.includes(estadoNuevo)) {
+    if (!permitidas.includes(nuevoNorm)) {
       throw new ErrorNegocio(
-        `Transición no permitida: ${estadoActual} → ${estadoNuevo}. Estados terminales (aprobada, rechazada) no pueden cambiar.`,
+        `Transición no permitida: ${estadoActual} → ${estadoNuevo}. ` +
+        `Estados terminales (aprobada, rechazada) no pueden cambiar.`,
         422,
       );
     }

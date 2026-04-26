@@ -116,6 +116,9 @@ export const esquemaSolicitud = z.object({
 /**
  * Esquema para PATCH /api/solicitudes/:id/estado
  * Solo SECRETARIA y ADMIN pueden actualizar el estado.
+ *
+ * Regla: observaciones es OBLIGATORIO cuando estado = aprobada | rechazada
+ * (campo "Observaciones y Comentarios *" del Panel de Resolución)
  */
 export const esquemaActualizarEstado = z.object({
   estado: z.enum(['en_revision', 'aprobada', 'rechazada'], {
@@ -123,9 +126,22 @@ export const esquemaActualizarEstado = z.object({
   }),
   observaciones: z
     .string()
+    .min(10, 'Las observaciones deben tener al menos 10 caracteres')
     .max(1000, 'Las observaciones no pueden superar 1000 caracteres')
     .optional(),
-});
+}).refine(
+  (datos) => {
+    // Cuando se aprueba o rechaza, las observaciones son OBLIGATORIAS
+    if (['aprobada', 'rechazada'].includes(datos.estado)) {
+      return datos.observaciones !== undefined && datos.observaciones.trim().length >= 10;
+    }
+    return true;
+  },
+  {
+    message: 'Las observaciones son obligatorias al aprobar o rechazar una solicitud (mínimo 10 caracteres)',
+    path: ['observaciones'],
+  },
+);
 
 export type TDatosSolicitud       = z.infer<typeof esquemaSolicitud>;
 export type TActualizarEstado     = z.infer<typeof esquemaActualizarEstado>;

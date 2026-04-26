@@ -768,54 +768,69 @@ export class RepositorioSolicitud {
       // Construir historial: primero la radicación, luego notificaciones
       const historial = [
         {
-          id_evento:      0,
-          descripcion:    'Solicitud radicada',
-          estado_nuevo:   'PENDIENTE',
+          id_evento:       0,
+          descripcion:     'Solicitud radicada',
+          observacion:     null,
+          estado_nuevo:    'PENDIENTE',
           estado_anterior: null,
-          fecha:          base.fecha_creacion,
-          actor:          base.nombre_completo,
-          rol_actor:      'estudiante',
+          fecha:           base.fecha_creacion,
+          actor:           base.nombre_completo,
+          rol_actor:       'estudiante',
         },
         ...notificaciones.map((n: any) => ({
-          id_evento:      n.id,
-          descripcion:    n.titulo,
-          estado_nuevo:   base.estado_solicitud,
+          id_evento:       n.id,
+          descripcion:     n.titulo,
+          observacion:     n.mensaje,   // mensaje completo con las observaciones
+          estado_nuevo:    base.estado_solicitud,
           estado_anterior: null,
-          fecha:          n.created_at,
-          actor:          n.actor,
-          rol_actor:      n.rol_actor,
+          fecha:           n.created_at,
+          actor:           n.actor,
+          rol_actor:       n.rol_actor,
         })),
       ];
 
+      // Observaciones de resolución: se lee desde justificacion_detallada
+      // Solo cuando el estado ya no es PENDIENTE (fue procesada por secretaría)
+      const observacionesResolucion =
+        base.estado_solicitud !== 'PENDIENTE'
+          ? base.justificacion_detallada ?? null
+          : null;
+
       return {
         // ── Encabezado ────────────────────────────────────────────
-        id_solicitud:      base.id_solicitud,
-        codigo_solicitud:  base.codigo_solicitud,
-        estado_solicitud:  base.estado_solicitud,
-        periodo_academico: base.periodo_academico,
-        fecha_creacion:    base.fecha_creacion,
+        id_solicitud:         base.id_solicitud,
+        codigo_solicitud:     base.codigo_solicitud,
+        estado_solicitud:     base.estado_solicitud,
+        periodo_academico:    base.periodo_academico,
+        fecha_creacion:       base.fecha_creacion,
         ultima_actualizacion: base.updated_at,
         // ── Estudiante ────────────────────────────────────────────
         estudiante: {
-          cod_alumno:          base.cod_alumno,
-          codigo_estudiantil:  base.codigo_estudiantil,
-          nombre_completo:     base.nombre_completo,
-          correo_institucional:base.correo_institucional,
-          semestre_actual:     base.semestre_actual,
-          promedio_acumulado:  base.promedio_acumulado,  // PAPA
-          jornada_actual:      base.jornada_actual_estudiante,
-          programa:            base.nombre_programa,
+          cod_alumno:           base.cod_alumno,
+          codigo_estudiantil:   base.codigo_estudiantil,
+          nombre_completo:      base.nombre_completo,
+          correo_institucional: base.correo_institucional,
+          semestre_actual:      base.semestre_actual,
+          promedio_acumulado:   base.promedio_acumulado,
+          jornada_actual:       base.jornada_actual_estudiante,
+          programa:             base.nombre_programa,
         },
         // ── Detalle solicitud ─────────────────────────────────────
         detalle_solicitud: {
-          tipo_novedad:           base.tipo_novedad,
-          motivo_novedad:         base.motivo_novedad,
-          justificacion_detallada: base.justificacion_detallada,
-          validacion_json:        base.validacion_json,
-          grupo_actual:           grupoActual,
-          grupo_solicitado:       grupoNuevo,
-          resuelta_por:           base.resuelta_por_nombre ?? null,
-          resuelta_por_rol:       base.resuelta_por_rol    ?? null,
+          tipo_novedad:             base.tipo_novedad,
+          motivo_novedad:           base.motivo_novedad,
+          justificacion_detallada:  base.estado_solicitud === 'PENDIENTE'
+                                      ? base.justificacion_detallada
+                                      : null,
+          observaciones_resolucion: observacionesResolucion,
+          validacion_json:          base.validacion_json,
+          grupo_actual:             grupoActual,
+          grupo_solicitado:         grupoNuevo,
+          resuelta_por:             base.resuelta_por_nombre ?? null,
+          resuelta_por_rol:         base.resuelta_por_rol    ?? null,
+          fecha_resolucion:         base.estado_solicitud !== 'PENDIENTE'
+                                      ? base.updated_at
+                                      : null,
         },
         // ── Documentos ────────────────────────────────────────────
         documentos,
