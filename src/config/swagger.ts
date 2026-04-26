@@ -15,8 +15,8 @@ const opcionesSwaggerJSDoc: swaggerJSDoc.Options = {
     openapi: '3.0.0',
     info: {
       title:       'Proyecto Novedades — API',
-      version:     '1.0.0',
-      description: `Sistema de gestión de novedades académicas — Proyecto Novedades v1.0.0
+      version:     '2.1.0',
+      description: `Sistema de gestión de novedades académicas — Proyecto Novedades v2.1.0
 
 Stack: Node.js · Express · TypeScript · PostgreSQL · Railway
 
@@ -26,6 +26,20 @@ Environments disponibles:
 - PROXIMO: https://api.proyectonovedades.edu.co (Dominio personalizado)
 
 Autenticación: Bearer JWT — Ejecuta POST /api/auth/login para obtener el token, luego haz clic en Authorize e ingresa: Bearer <tu_token>
+
+---
+
+NOVEDADES v2.1 — Dashboard de Secretaría
+
+✨ Nuevos Endpoints:
+- GET /api/dashboard/secretaria — Métricas consolidadas (pendientes, aprobadas, tiempo respuesta)
+- GET /api/solicitudes/panel/listar — Listado con filtros, búsqueda y paginación
+
+✨ Cambios de estado transaccionales (ACID):
+- PATCH /api/solicitudes/:id/estado ahora es TRANSACCIONAL
+  * Valida transición de estado
+  * Crea notificación automática al estudiante
+  * ROLLBACK automático si hay error
 
 ---
 
@@ -383,11 +397,12 @@ FORMATO DE RESPUESTA UNIFORME
         },
         TipoNovedad: {
           type: 'string',
-          enum: ['ADICION', 'CAMBIO_JORNADA', 'CURSO_DIRIGIDO'],
-          description: `Tipos de novedad académica soportados:
-- **ADICION** — Agregar una nueva sección al horario del estudiante
-- **CAMBIO_JORNADA** — Cambiar de jornada/grupo en un curso ya matriculado
-- **CURSO_DIRIGIDO** — Solicitud de curso en modalidad dirigida`,
+          enum: ['CAMBIO_CURSO', 'CAMBIO_JORNADA', 'ADICION_CURSO', 'CURSO_DIRIGIDO'],
+          description: `Tipos de novedad académica soportados (valores en BD en MAYÚSCULAS):
+- **CAMBIO_CURSO** — Cambio de grupo en un curso ya matriculado (mismo curso, diferente grupo)
+- **CAMBIO_JORNADA** — Cambio de jornada completa (mañana/tarde/noche)
+- **ADICION_CURSO** — Agregar un nuevo curso al horario del estudiante
+- **CURSO_DIRIGIDO** — Curso en modalidad dirigida (sin oferta regular en el semestre)`,
         },
       },
     },
@@ -395,6 +410,22 @@ FORMATO DE RESPUESTA UNIFORME
     security: [{ BearerAuth: [] }],
     // Agrupación de endpoints por módulo
     tags: [
+      {
+        name:        'Dashboard',
+        description: `Panel de métricas y KPIs para la Secretaría Académica.
+
+Acceso exclusivo para SECRETARIA y ADMIN.
+
+Métricas disponibles:
+- **total_pendientes** — Solicitudes en estado PENDIENTE
+- **aprobadas_hoy** — Solicitudes aprobadas en la fecha actual
+- **rechazadas_hoy** — Solicitudes rechazadas en la fecha actual
+- **tiempo_respuesta_promedio** — Promedio en horas desde creación hasta resolución
+- **solicitudes_vencidas** — Pendientes con más de 3 días sin resolver
+- **distribucion_por_tipo** — Conteo por tipo de novedad
+- **distribucion_por_estado** — Conteo por estado
+- **periodo_academico_actual** — Período calculado automáticamente`,
+      },
       {
         name:        'Health',
         description: 'Estado y disponibilidad del servidor. Ruta pública sin autenticación.',

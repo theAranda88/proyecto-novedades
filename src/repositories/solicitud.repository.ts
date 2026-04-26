@@ -512,4 +512,121 @@ export class RepositorioSolicitud {
       throw new ErrorBaseDatos(`Error al obtener solicitud: ${(error as Error).message}`);
     }
   }
+
+  /**
+   * Lista solicitudes con filtros, búsqueda y paginación.
+   * Para el panel de Secretaría.
+   *
+   * @param opciones - { estado?, programaId?, busqueda?, pagina, tamanio, ordenar, direccion }
+   * @returns {Promise<{ datos: any[], total: number }>
+   */
+  async listarSolicitudesConFiltros(opciones: {
+    estado?: string;
+    programaId?: number;
+    busqueda?: string;
+    pagina: number;
+    tamanio: number;
+    ordenar?: string;
+    direccion?: string;
+  }): Promise<{ datos: any[]; total: number }> {
+    try {
+      const { estado, programaId, busqueda, pagina, tamanio, ordenar = 'created_at', direccion = 'DESC' } = opciones;
+
+      // Mapa de columnas permitidas para ORDER BY (previene SQL injection y traduce alias)
+      const columnaOrden: Record<string, string> = {
+        created_at:      'fecha_creacion',
+        fecha_creacion:  'fecha_creacion',
+        fecha_solicitud: 'fecha_creacion',
+        estado:          'estado_solicitud',
+        estado_solicitud:'estado_solicitud',
+        tipo:            'tipo_novedad',
+        tipo_novedad:    'tipo_novedad',
+        codigo_solicitud:'codigo_solicitud',
+      };
+      const columnaOrdenFinal = columnaOrden[ordenar] ?? 'fecha_creacion';
+
+      // Validar offset y limit
+      const offset = (pagina - 1) * tamanio;
+      const validarDireccion = ['ASC', 'DESC'].includes(direccion.toUpperCase()) ? direccion.toUpperCase() : 'DESC';
+
+      // Construir condiciones WHERE
+      const condiciones: string[] = ['s.deleted_at IS NULL'];
+      const parametros: any[] = [];
+      let numeroParam = 1;
+
+      if (estado) {
+        // estado_solicitud en BD está en MAYÚSCULAS (PENDIENTE, APROBADA, RECHAZADA)
+        condiciones.push(`s.estado_solicitud = $${numeroParam}`);
+        parametros.push(estado.toUpperCase());
+        numeroParam++;
+      }
+
+      if (programaId) {
+        // programa_id vive en la tabla estudiantes
+        condiciones.push(`est.programa_id = $${numeroParam}`);
+        parametros.push(programaId);
+        numeroParam++;
+      }
+
+      if (busqueda) {
+        condiciones.push(`(
+          s.codigo_solicitud ILIKE $${numeroParam}
+          OR est.nombre_completo ILIKE $${numeroParam}
+          OR u.codigo_estudiantil ILIKE $${numeroParam}
+          OR s.tipo_novedad ILIKE $${numeroParam}
+        )`);
+        parametros.push(`%${busqueda}%`);
+        numeroParam++;
+      }
+
+      const clausulaWhere = condiciones.join(' AND ');
+
+      // Query para contar total
+      // JOIN por cod_alumno (columna real en BD — no existe estudiante_id en solicitudes)
+      const queryContar = `
+        SELECT COUNT(*) as total
+        FROM solicitudes s
+        LEFT JOIN estudiantes est ON est.cod_alumno = s.cod_alumno
+        LEFT JOIN usuarios u ON u.id_usuario = est.usuario_id
+        WHERE ${clausulaWhere}
+      `;
+
+      // Query para listar
+      const queryListar = `
+        SELECT 
+          s.id_solicitud                                              AS id,
+          s.codigo_solicitud,
+          est.nombre_completo,
+          u.codigo_estudiantil,
+          s.tipo_novedad                                              AS tipo_solicitud,
+          prog.nombre_programa                                        AS programa,
+          s.fecha_creacion                                            AS fecha_solicitud,
+          s.estado_solicitud                                          AS estado,
+          EXTRACT(EPOCH FROM (NOW() - s.fecha_creacion)) / 3600      AS tiempo_pendiente,
+          usu_aprobador.nombre_completo                               AS aprobada_por
+        FROM solicitudes s
+        LEFT JOIN estudiantes est        ON est.cod_alumno   = s.cod_alumno
+        LEFT JOIN usuarios u             ON u.id_usuario     = est.usuario_id
+        LEFT JOIN programas prog         ON prog.id_programa = est.programa_id
+        LEFT JOIN usuarios usu_aprobador ON usu_aprobador.id_usuario = s.updated_by
+        WHERE ${clausulaWhere}
+        ORDER BY s.${columnaOrdenFinal} ${validarDireccion}
+        LIMIT $${numeroParam} OFFSET $${numeroParam + 1}
+      `;
+
+      parametros.push(tamanio, offset);
+
+      const [resultadoContar, resultadoListar] = await Promise.all([
+        pool.query(queryContar, parametros.slice(0, -2)),
+        pool.query(queryListar, parametros),
+      ]);
+
+      const total = Number(resultadoContar.rows[0]?.total ?? 0);
+      const datos = resultadoListar.rows;
+
+      return { datos, total };
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al listar solicitudes: ${(error as Error).message}`);
+    }
+  }
 }

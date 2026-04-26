@@ -25,6 +25,7 @@ export class ControladorSolicitud {
     this.listarTodas         = this.listarTodas.bind(this);
     this.actualizarEstado    = this.actualizarEstado.bind(this);
     this.obtenerPorId        = this.obtenerPorId.bind(this);
+    this.listarConFiltros    = this.listarConFiltros.bind(this);
   }
 
   /**
@@ -198,6 +199,56 @@ export class ControladorSolicitud {
       }
 
       RespuestaUtil.exito(res, 'Solicitud obtenida exitosamente', solicitud, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/solicitudes/panel
+   * Lista solicitudes con filtros, búsqueda y paginación para el panel de Secretaría.
+   * Solo SECRETARIA y ADMIN pueden acceder.
+   *
+   * Query params:
+   * - estado: Filtro por estado (pendiente, en_revision, aprobada, rechazada)
+   * - programa_id: Filtro por programa
+   * - busqueda: Busca por nombre, código, ID solicitud
+   * - pagina: Número de página (default: 1)
+   * - tamanio: Registros por página (default: 10, max: 50)
+   * - ordenar: Campo para ordenar (default: created_at)
+   * - direccion: ASC o DESC (default: DESC)
+   *
+   * @acceso SECRETARIA, ADMIN
+   */
+  async listarConFiltros(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const estado = req.query.estado as string | undefined;
+      const programaId = req.query.programa_id ? Number(req.query.programa_id) : undefined;
+      const busqueda = req.query.busqueda as string | undefined;
+      const pagina = req.query.pagina ? Number(req.query.pagina) : 1;
+      const tamanio = req.query.tamanio ? Number(req.query.tamanio) : 10;
+      const ordenar = req.query.ordenar as string | undefined;
+      const direccion = req.query.direccion as string | undefined;
+
+      const resultado = await this.servicioSolicitud.listarSolicitudesConFiltros({
+        estado,
+        programaId,
+        busqueda,
+        pagina,
+        tamanio,
+        ordenar,
+        direccion,
+      });
+
+      RespuestaUtil.exito(
+        res,
+        'Solicitudes obtenidas correctamente',
+        {
+          ...resultado,
+          mostrando: `${(resultado.pagina - 1) * resultado.tamanio + 1}-${Math.min(resultado.pagina * resultado.tamanio, resultado.total)} de ${resultado.total}`,
+        },
+        200,
+      );
     } catch (error) {
       next(error);
     }

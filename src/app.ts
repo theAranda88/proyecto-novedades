@@ -12,6 +12,7 @@ import enrutadorSolicitudes       from './routes/solicitudRoutes';
 import enrutadorEstudiante        from './routes/estudianteRoutes';
 import enrutadorGrupos            from './routes/grupoRoutes';
 import enrutadorUsuarios          from './routes/usuarioRoutes';
+import enrutadorDashboard         from './routes/dashboardRoutes';
 import { manejadorErroresGlobal } from './middlewares/errorHandler';
 import { configurarSwagger }      from './config/swagger';
 
@@ -151,6 +152,7 @@ app.use('/api/auth',       enrutadorAuth);
 // ------------------------------------------------------------
 // RUTAS PROTEGIDAS (requieren JWT válido + primer_login = FALSE)
 // ------------------------------------------------------------
+app.use('/api/dashboard',    enrutadorDashboard);
 app.use('/api/solicitudes',  enrutadorSolicitudes);
 app.use('/api/estudiantes',  enrutadorEstudiante);
 app.use('/api/grupos',       enrutadorGrupos);

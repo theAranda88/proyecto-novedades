@@ -272,7 +272,14 @@ enrutadorSolicitudes.get(
  *     summary: Actualizar estado de una solicitud
  *     description: |
  *       Permite a la **SECRETARIA** o **ADMIN** cambiar el estado de una solicitud.
- *       Al aprobar/rechazar se registra: `aprobada_por`, `fecha_resolucion` y `observaciones`.
+ *       Al aprobar/rechazar se registra `updated_by` y `updated_at` con el usuario que resolvió.
+ *
+ *       **Transiciones permitidas:**
+ *       - `PENDIENTE` → `en_revision`, `aprobada`, `rechazada`
+ *       - `en_revision` → `aprobada`, `rechazada`
+ *       - `aprobada` / `rechazada` → ❌ Estados terminales, no se puede cambiar
+ *
+ *       La operación es **transaccional (ACID)**: si falla la notificación, se hace ROLLBACK.
  *     tags:
  *       - Solicitudes
  *     security:
@@ -321,6 +328,106 @@ enrutadorSolicitudes.patch(
   verificarRol(RolUsuario.SECRETARIA, RolUsuario.ADMIN),
   validarEsquema(esquemaActualizarEstado),
   controladorSolicitud.actualizarEstado,
+);
+
+/**
+ * @swagger
+ * /api/solicitudes/panel/listar:
+ *   get:
+ *     summary: Lista solicitudes para panel de Secretaría (con filtros y paginación)
+ *     description: |
+ *       Retorna solicitudes con filtros, búsqueda y paginación para el panel de Secretaría.
+ *
+ *       **Query Parameters:**
+ *       - `estado`: Filtro por estado (pendiente, en_revision, aprobada, rechazada)
+ *       - `programa_id`: Filtro por programa (ID numérico)
+ *       - `busqueda`: Busca por nombre estudiante, código, ID solicitud (case-insensitive)
+ *       - `pagina`: Número de página (default: 1)
+ *       - `tamanio`: Registros por página (default: 10, max: 50)
+ *       - `ordenar`: Campo para ordenar (default: created_at)
+ *       - `direccion`: ASC o DESC (default: DESC)
+ *     tags:
+ *       - Solicitudes
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [pendiente, en_revision, aprobada, rechazada]
+ *         required: false
+ *       - in: query
+ *         name: programa_id
+ *         schema:
+ *           type: integer
+ *         required: false
+ *       - in: query
+ *         name: busqueda
+ *         schema:
+ *           type: string
+ *         required: false
+ *       - in: query
+ *         name: pagina
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         required: false
+ *       - in: query
+ *         name: tamanio
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           maximum: 50
+ *         required: false
+ *       - in: query
+ *         name: ordenar
+ *         schema:
+ *           type: string
+ *           default: created_at
+ *         required: false
+ *       - in: query
+ *         name: direccion
+ *         schema:
+ *           type: string
+ *           enum: [ASC, DESC]
+ *           default: DESC
+ *         required: false
+ *     responses:
+ *       200:
+ *         description: Listado de solicitudes obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             example:
+ *               ok: true
+ *               mensaje: "Solicitudes obtenidas correctamente"
+ *               datos:
+ *                 datos:
+ *                   - id: 1
+ *                     codigo_solicitud: "REQ-2026-001"
+ *                     nombre_completo: "Carlos Andres Perez Lopez"
+ *                     codigo_estudiantil: "2024001"
+ *                     tipo_solicitud: "CAMBIO_CURSO"
+ *                     programa: "Ingenieria de Sistemas"
+ *                     fecha_solicitud: "2026-03-15T10:30:00Z"
+ *                     estado: "PENDIENTE"
+ *                     tiempo_pendiente: "48.5"
+ *                     aprobada_por: null
+ *                 total: 3
+ *                 pagina: 1
+ *                 tamanio: 10
+ *                 total_paginas: 1
+ *                 mostrando: "1-3 de 3"
+ *       401:
+ *         description: No autenticado
+ *       403:
+ *         description: No autorizado (requiere rol SECRETARIA o ADMIN)
+ */
+enrutadorSolicitudes.get(
+  '/panel/listar',
+  verificarToken,
+  verificarRol(RolUsuario.SECRETARIA, RolUsuario.ADMIN),
+  controladorSolicitud.listarConFiltros,
 );
 
 export default enrutadorSolicitudes;

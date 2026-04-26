@@ -1,7 +1,7 @@
 {
   "info": {
-    "name": "Proyecto Novedades - API v2.0",
-    "description": "Coleccion completa del sistema de gestion de novedades academicas.\n\nStack: Node.js + Express + TypeScript + PostgreSQL\nAutenticacion: Bearer JWT\n\nENVIRONMENTS DISPONIBLES:\n- Desarrollo: http://localhost:3000\n- Produccion: https://proyecto-novedades-six.vercel.app (Vercel)\n\n---\n\nNOVEDADES v2.0\nNUEVA: Gestion Integral de Usuarios (CRUD)\n- GET /api/usuarios — Listar con filtros y paginacion\n- GET /api/usuarios/buscar — Busqueda por nombre/email/codigo\n- GET /api/usuarios/:id — Obtener usuario completo\n- PUT /api/usuarios/:id — Actualizar (nombre, email)\n- PUT /api/usuarios/:id/desactivar — Desactivar usuario\n- PUT /api/usuarios/:id/reactivar — Reactivar (solo ADMIN)\n- PUT /api/usuarios/:id/estado-matricula — Cambiar matricula\n\nAuditoria: Todos los cambios se registran automaticamente\n\n---\n\nINSTRUCCIONES DE USO\n1. Importa el environment correspondiente (Desarrollo.postman_environment.json o Produccion.postman_environment.json)\n2. Ejecuta POST Login — Estudiante → el token se guarda automaticamente en {{token}}\n3. Todos los endpoints protegidos usan {{token}} automaticamente\n4. Si primer_login = true en la respuesta, debes ejecutar POST Cambio de Contrasena antes de usar otros endpoints\n5. Para gestion de usuarios: Hacer login como ADMIN (codigo: ADMIN001) y usar carpeta Gestion de Usuarios (CRUD)\n\nCREDENCIALES DE PRUEBA (HU_DB seed v3.2)\nContrasena universal: Password123\n\nESTUDIANTES\n| Codigo | Nombre | Programa | Semestre | Cursos | Estado |\n|--------|--------|----------|----------|--------|--------|\n| 2024001 | Carlos Andres Perez Lopez | Ing. Sistemas | 3 | PRG201-G01 | Activo |\n| 2024002 | Maria Fernanda Lopez Torres | Ing. Industrial | 2 | (ninguno) | Activo |\n| 2024003 | Juan Carlos Martinez Garcia | Ing. Sistemas | 4 | MAT101-G01, EST301-G01 | Activo |\n| 2024004 | Sofia Alejandra Ruiz Mendez | Ing. Industrial | 3 | PRG201-G02, EST301-G02 | Activo |\n| 2024005 | Miguel Angel Pena Rodriguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | Activo |\n| 2024006 | Laura Patricia Sanchez Lopez | Ing. Sistemas | 5 | PRG201-G03, MAT101-G03 | Activo |\n| 2024007 | David Fernando Torres Castillo | Ing. Industrial | 3 | EST301-G01 | bajo_rendimiento |\n| 2024008 | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | Activo |\n| 2023010 | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | INACTIVA |\n\nADMINISTRATIVOS\n| Codigo | Nombre | Rol | Status |\n|--------|--------|-----|--------|\n| SEC001 | Ana Maria Rodriguez Soto | secretaria | Activo |\n| ADMIN001 | Administrador del Sistema | admin | Activo |\n\nREGLAS DE NEGOCIO IMPLEMENTADAS (HU_DB S5)\n- ADICION_CURSO: limite creditos, cupos, cruce horario, no aprobada previa\n- CAMBIO_CURSO: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- CAMBIO_JORNADA: jornada diferente, grupos disponibles en nueva jornada\n- CURSO_DIRIGIDO: curso NO se oferta en semestre actual, maximo 3 estudiantes, sin cruce horario, estado academico\n\nSEGURIDAD (HU_001)\n- Bloqueo tras 5 intentos fallidos (15 min) — HTTP 423\n- Cambio obligatorio de contrasena en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en 8h\n\nCONTROL DE ACCESO (Gestion de Usuarios v2.0)\n- ADMIN: Acceso completo a todos los usuarios, puede crear/editar/desactivar\n- SECRETARIA: Solo gestiona ESTUDIANTE (crear, editar, desactivar)\n- ESTUDIANTE: Sin permisos (403 Forbidden)\n\nSTATUS DEL DEPLOYMENT\nPlataforma: Vercel (Serverless)\nBase de Datos: PostgreSQL en Railway\nURL Publica: https://proyecto-novedades-six.vercel.app\nDocumentacion: https://proyecto-novedades-six.vercel.app/api-docs\nHealth Check: GET /api/health",
+    "name": "Proyecto Novedades - API v2.1",
+    "description": "Coleccion completa del sistema de gestion de novedades academicas.\n\nStack: Node.js + Express + TypeScript + PostgreSQL\nAutenticacion: Bearer JWT\n\nENVIRONMENTS DISPONIBLES:\n- Desarrollo: http://localhost:3000\n- Produccion: https://proyecto-novedades-six.vercel.app (Vercel)\n\n---\n\nNOVEDADES v2.1\nNUEVA: Dashboard de Secretaria + Panel de Solicitudes\n- GET /api/dashboard/secretaria — Metricas consolidadas (pendientes, aprobadas, tiempo respuesta)\n- GET /api/solicitudes/panel/listar — Listado con filtros, busqueda y paginacion\n  * Filtros: estado, programa_id, busqueda\n  * Paginacion: pagina, tamanio (max 50)\n  * Ordenamiento: ordenar, direccion\n  * Respuesta: datos[], total, pagina, tamanio, total_paginas, mostrando\n\nNOVEDADES v2.0\nNUEVA: Gestion Integral de Usuarios (CRUD)\n- GET /api/usuarios — Listar con filtros y paginacion\n- GET /api/usuarios/buscar — Busqueda por nombre/email/codigo\n- GET /api/usuarios/:id — Obtener usuario completo\n- PUT /api/usuarios/:id — Actualizar (nombre, email)\n- PUT /api/usuarios/:id/desactivar — Desactivar usuario\n- PUT /api/usuarios/:id/reactivar — Reactivar (solo ADMIN)\n- PUT /api/usuarios/:id/estado-matricula — Cambiar matricula\n\nAuditoria: Todos los cambios se registran automaticamente\n\n---\n\nINSTRUCCIONES DE USO\n1. Importa el environment correspondiente (Desarrollo.postman_environment.json o Produccion.postman_environment.json)\n2. Ejecuta POST Login — Estudiante → el token se guarda automaticamente en {{token}}\n3. Todos los endpoints protegidos usan {{token}} automaticamente\n4. Si primer_login = true en la respuesta, debes ejecutar POST Cambio de Contrasena antes de usar otros endpoints\n5. Para gestion de usuarios: Hacer login como ADMIN (codigo: ADMIN001) y usar carpeta Gestion de Usuarios (CRUD)\n6. Para dashboard: Hacer login como SECRETARIA (codigo: SEC001) y usar carpeta Dashboard de Secretaria\n\nCREDENCIALES DE PRUEBA (HU_DB seed v3.2)\nContrasena universal: Password123\n\nESTUDIANTES\n| Codigo | Nombre | Programa | Semestre | Cursos | Estado |\n|--------|--------|----------|----------|--------|--------|\n| 2024001 | Carlos Andres Perez Lopez | Ing. Sistemas | 3 | PRG201-G01 | Activo |\n| 2024002 | Maria Fernanda Lopez Torres | Ing. Industrial | 2 | (ninguno) | Activo |\n| 2024003 | Juan Carlos Martinez Garcia | Ing. Sistemas | 4 | MAT101-G01, EST301-G01 | Activo |\n| 2024004 | Sofia Alejandra Ruiz Mendez | Ing. Industrial | 3 | PRG201-G02, EST301-G02 | Activo |\n| 2024005 | Miguel Angel Pena Rodriguez | Admin. Empresas | 2 | MAT101-G02, PRG201-G02 | Activo |\n| 2024006 | Laura Patricia Sanchez Lopez | Ing. Sistemas | 5 | PRG201-G03, MAT101-G03 | Activo |\n| 2024007 | David Fernando Torres Castillo | Ing. Industrial | 3 | EST301-G01 | bajo_rendimiento |\n| 2024008 | Ana Beatriz Flores Gutierrez | Admin. Empresas | 6 | MAT101-G01, PRG201-G01, EST301-G01 | Activo |\n| 2023010 | Luis Eduardo Gomez Rios | Admin. Empresas | 4 | (ninguno) | INACTIVA |\n\nADMINISTRATIVOS\n| Codigo | Nombre | Rol | Status |\n|--------|--------|-----|--------|\n| SEC001 | Ana Maria Rodriguez Soto | secretaria | Activo |\n| ADMIN001 | Administrador del Sistema | admin | Activo |\n\nREGLAS DE NEGOCIO IMPLEMENTADAS (HU_DB S5)\n- ADICION_CURSO: limite creditos, cupos, cruce horario, no aprobada previa\n- CAMBIO_CURSO: inscripcion activa, no reprobada, estado_academico normal, cupos, cruce horario\n- CAMBIO_JORNADA: jornada diferente, grupos disponibles en nueva jornada\n- CURSO_DIRIGIDO: curso NO se oferta en semestre actual, maximo 3 estudiantes, sin cruce horario, estado academico\n\nSEGURIDAD (HU_001)\n- Bloqueo tras 5 intentos fallidos (15 min) — HTTP 423\n- Cambio obligatorio de contrasena en primer login — HTTP 403 si no se cambia\n- bcrypt cost >= 12\n- JWT expira en 8h\n\nCONTROL DE ACCESO (Gestion de Usuarios v2.0)\n- ADMIN: Acceso completo a todos los usuarios, puede crear/editar/desactivar\n- SECRETARIA: Solo gestiona ESTUDIANTE (crear, editar, desactivar) + acceso a Dashboard\n- ESTUDIANTE: Sin permisos (403 Forbidden)\n\nSTATUS DEL DEPLOYMENT\nPlataforma: Vercel (Serverless)\nBase de Datos: PostgreSQL en Railway\nURL Publica: https://proyecto-novedades-six.vercel.app\nDocumentacion: https://proyecto-novedades-six.vercel.app/api-docs\nHealth Check: GET /api/health",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "proyecto-novedades-v2-2026"
   },
@@ -790,6 +790,144 @@
               "host": ["{{base_url}}"],
               "path": ["api", "estudiantes", "solicitudes", "1", "adjunto"]
             }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard de Secretaría — Panel de Control",
+      "description": "Endpoints para el dashboard y panel de gestión de solicitudes de Secretaría.\n\n**Acceso:** Solo SECRETARIA y ADMIN\n\n**Funcionalidades:**\n- Métricas consolidadas (pendientes, aprobadas, tiempo respuesta)\n- Listado de solicitudes con filtros, búsqueda y paginación\n- Análisis por tipo de solicitud y estado",
+      "item": [
+        {
+          "name": "GET Dashboard - Métricas Consolidadas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard/secretaria",
+              "host": ["{{base_url}}"],
+              "path": ["api", "dashboard", "secretaria"]
+            },
+            "description": "Obtiene las métricas consolidadas para el dashboard de Secretaría:\n- Total de solicitudes pendientes\n- Solicitudes aprobadas hoy\n- Solicitudes rechazadas hoy\n- Tiempo promedio de respuesta (en horas)\n- Solicitudes vencidas (pendientes > 3 días)\n- Distribución por tipo de solicitud\n- Distribución por estado\n- Período académico actual"
+          },
+          "response": [
+            {
+              "name": "200 — Métricas obtenidas",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Métricas del dashboard obtenidas correctamente\",\n  \"datos\": {\n    \"total_pendientes\": 42,\n    \"aprobadas_hoy\": 128,\n    \"rechazadas_hoy\": 5,\n    \"tiempo_respuesta_promedio\": 33.6,\n    \"solicitudes_vencidas\": 8,\n    \"distribucion_por_tipo\": {\n      \"cambio_curso\": 45,\n      \"cambio_jornada\": 12,\n      \"adicion_curso\": 78,\n      \"curso_dirigido\": 23\n    },\n    \"distribucion_por_estado\": {\n      \"pendiente\": 42,\n      \"en_revision\": 15,\n      \"aprobada\": 89,\n      \"rechazada\": 12\n    },\n    \"periodo_academico_actual\": \"2026-1\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Panel - Solicitudes con Filtros y Paginación",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/panel/listar?estado=pendiente&programa_id=1&pagina=1&tamanio=10&ordenar=created_at&direccion=DESC",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "panel", "listar"],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "pendiente",
+                  "description": "Filtro por estado: pendiente, en_revision, aprobada, rechazada"
+                },
+                {
+                  "key": "programa_id",
+                  "value": "1",
+                  "description": "Filtro por programa (ID numérico)"
+                },
+                {
+                  "key": "busqueda",
+                  "value": "",
+                  "disabled": true,
+                  "description": "Busca por nombre, código, ID solicitud (case-insensitive)"
+                },
+                {
+                  "key": "pagina",
+                  "value": "1",
+                  "description": "Número de página (default: 1)"
+                },
+                {
+                  "key": "tamanio",
+                  "value": "10",
+                  "description": "Registros por página (default: 10, max: 50)"
+                },
+                {
+                  "key": "ordenar",
+                  "value": "created_at",
+                  "description": "Campo para ordenar (default: created_at)"
+                },
+                {
+                  "key": "direccion",
+                  "value": "DESC",
+                  "description": "ASC o DESC (default: DESC)"
+                }
+              ]
+            },
+            "description": "Lista solicitudes del panel de Secretaría con filtros, búsqueda y paginación.\n\n**Parámetros:**\n- `estado`: Filtro por estado\n- `programa_id`: Filtro por programa\n- `busqueda`: Busca por nombre, código, ID solicitud\n- `pagina`: Número de página\n- `tamanio`: Registros por página (máx 50)\n- `ordenar`: Campo para ordenar\n- `direccion`: ASC o DESC"
+          },
+          "response": [
+            {
+              "name": "200 — Solicitudes obtenidas",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Solicitudes obtenidas correctamente\",\n  \"datos\": {\n    \"datos\": [\n      {\n        \"id\": \"1\",\n        \"codigo_solicitud\": \"REQ-2026-001\",\n        \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n        \"codigo_estudiantil\": \"2024001\",\n        \"tipo_solicitud\": \"CAMBIO_CURSO\",\n        \"programa\": \"Ingenieria de Sistemas\",\n        \"fecha_solicitud\": \"2026-03-21T18:25:16.276Z\",\n        \"estado\": \"PENDIENTE\",\n        \"tiempo_pendiente\": \"844.09\",\n        \"aprobada_por\": null\n      }\n    ],\n    \"total\": 3,\n    \"pagina\": 1,\n    \"tamanio\": 10,\n    \"total_paginas\": 1,\n    \"mostrando\": \"1-3 de 3\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "GET Panel - Solo Pendientes (sin filtros)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/panel/listar",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "panel", "listar"]
+            },
+            "description": "Obtiene la primera página de solicitudes (10 registros por defecto)."
+          }
+        },
+        {
+          "name": "GET Panel - Buscar por nombre/código",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/panel/listar?busqueda=Carlos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "panel", "listar"],
+              "query": [
+                {
+                  "key": "busqueda",
+                  "value": "Carlos"
+                }
+              ]
+            },
+            "description": "Busca solicitudes por nombre del estudiante, código, o ID solicitud."
           }
         }
       ]
