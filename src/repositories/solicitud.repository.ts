@@ -629,4 +629,203 @@ export class RepositorioSolicitud {
       throw new ErrorBaseDatos(`Error al listar solicitudes: ${(error as Error).message}`);
     }
   }
+
+  // ─── DETALLE COMPLETO DE SOLICITUD ──────────────────────────────────────────
+  /**
+   * Obtiene el detalle completo de una solicitud para la pantalla de detalle.
+   *
+   * Tablas involucradas (columnas exactas de la BD):
+   *  - solicitudes: id_solicitud, cod_alumno, tipo_novedad, motivo_novedad,
+   *    justificacion_detallada, estado_solicitud, periodo_academico,
+   *    fecha_creacion, codigo_solicitud, validacion_json, grupo_nuevo_id,
+   *    grupo_actual_id, updated_at, updated_by
+   *  - estudiantes: cod_alumno, codigo_estudiantil, nombre_completo,
+   *    correo_institucional, semestre_actual, promedio_acumulado, jornada
+   *  - programas: nombre_programa
+   *  - usuarios: nombre_completo (del resolutor)
+   *  - grupos_curso: jornada, codigo_grupo (grupo actual y nuevo)
+   *
+   * @param idSolicitud - id_solicitud (PK)
+   * @returns objeto con datos completos o null si no existe
+   */
+  async obtenerDetalleSolicitud(idSolicitud: number): Promise<any | null> {
+    try {
+      // ── Bloque principal: solicitud + estudiante + programa + resolutor ──────
+      const { rows } = await pool.query(`
+        SELECT
+          -- Solicitud
+          s.id_solicitud,
+          s.codigo_solicitud,
+          s.tipo_novedad,
+          s.motivo_novedad,
+          s.justificacion_detallada,
+          s.estado_solicitud,
+          s.periodo_academico,
+          s.fecha_creacion,
+          s.updated_at,
+          s.validacion_json,
+          s.grupo_actual_id,
+          s.grupo_nuevo_id,
+          -- Estudiante
+          e.cod_alumno,
+          e.codigo_estudiantil,
+          e.nombre_completo,
+          COALESCE(e.correo_institucional, e.email_institucional) AS correo_institucional,
+          e.semestre_actual,
+          e.promedio_acumulado,
+          e.jornada                  AS jornada_actual_estudiante,
+          -- Programa
+          p.nombre_programa,
+          -- Quien resolvió (updated_by → usuarios)
+          ur.nombre_completo         AS resuelta_por_nombre,
+          LOWER(ur.rol::TEXT)        AS resuelta_por_rol
+        FROM solicitudes s
+        JOIN  estudiantes e  ON e.cod_alumno   = s.cod_alumno
+        JOIN  programas   p  ON p.id_programa  = e.programa_id
+        LEFT JOIN usuarios ur ON ur.id_usuario = s.updated_by
+        WHERE s.id_solicitud = $1
+          AND s.deleted_at   IS NULL
+      `, [idSolicitud]);
+
+      if (!rows[0]) return null;
+      const base = rows[0];
+
+      // ── Grupo actual (si aplica) ─────────────────────────────────────────────
+      let grupoActual = null;
+      if (base.grupo_actual_id) {
+        const { rows: [ga] } = await pool.query(`
+          SELECT
+            gc.id,
+            gc.codigo_grupo,
+            gc.jornada,
+            gc.dia_semana,
+            gc.hora_inicio::TEXT AS hora_inicio,
+            gc.hora_fin::TEXT    AS hora_fin,
+            c.nombre_curso,
+            c.cod_curso
+          FROM grupos_curso gc
+          JOIN cursos c ON c.id = gc.curso_id
+          WHERE gc.id = $1
+        `, [base.grupo_actual_id]);
+        grupoActual = ga ?? null;
+      }
+
+      // ── Grupo nuevo / solicitado (si aplica) ─────────────────────────────────
+      let grupoNuevo = null;
+      if (base.grupo_nuevo_id) {
+        const { rows: [gn] } = await pool.query(`
+          SELECT
+            gc.id,
+            gc.codigo_grupo,
+            gc.jornada,
+            gc.dia_semana,
+            gc.hora_inicio::TEXT AS hora_inicio,
+            gc.hora_fin::TEXT    AS hora_fin,
+            c.nombre_curso,
+            c.cod_curso
+          FROM grupos_curso gc
+          JOIN cursos c ON c.id = gc.curso_id
+          WHERE gc.id = $1
+        `, [base.grupo_nuevo_id]);
+        grupoNuevo = gn ?? null;
+      }
+
+      // ── Documentos adjuntos ──────────────────────────────────────────────────
+      // Tabla: documentos_adjuntos
+      // Columnas: id, solicitud_id, nombre_archivo, tipo_mime, tamanio_bytes,
+      //           url_storage, created_at, created_by
+      const { rows: documentos } = await pool.query(`
+        SELECT
+          d.id                AS id_documento,
+          d.nombre_archivo,
+          d.tipo_mime,
+          d.tamanio_bytes,
+          d.url_storage       AS url_archivo,
+          d.created_at        AS fecha_subida
+        FROM documentos_adjuntos d
+        WHERE d.solicitud_id = $1
+        ORDER BY d.created_at ASC
+      `, [idSolicitud]);
+
+      // ── Historial (desde notificaciones — no hay tabla historial_solicitudes) ─
+      // Se construye una línea de tiempo sintética:
+      //   1) Radicación: fecha_creacion de solicitud
+      //   2) Notificaciones asociadas: orden cronológico
+      const { rows: notificaciones } = await pool.query(`
+        SELECT
+          n.id,
+          n.titulo,
+          n.mensaje,
+          n.created_at,
+          COALESCE(u.nombre_completo, 'Sistema') AS actor,
+          COALESCE(LOWER(u.rol::TEXT), 'sistema') AS rol_actor
+        FROM notificaciones n
+        LEFT JOIN usuarios u ON u.id_usuario = n.usuario_id
+        WHERE n.solicitud_id = $1
+        ORDER BY n.created_at ASC
+      `, [idSolicitud]);
+
+      // Construir historial: primero la radicación, luego notificaciones
+      const historial = [
+        {
+          id_evento:      0,
+          descripcion:    'Solicitud radicada',
+          estado_nuevo:   'PENDIENTE',
+          estado_anterior: null,
+          fecha:          base.fecha_creacion,
+          actor:          base.nombre_completo,
+          rol_actor:      'estudiante',
+        },
+        ...notificaciones.map((n: any) => ({
+          id_evento:      n.id,
+          descripcion:    n.titulo,
+          estado_nuevo:   base.estado_solicitud,
+          estado_anterior: null,
+          fecha:          n.created_at,
+          actor:          n.actor,
+          rol_actor:      n.rol_actor,
+        })),
+      ];
+
+      return {
+        // ── Encabezado ────────────────────────────────────────────
+        id_solicitud:      base.id_solicitud,
+        codigo_solicitud:  base.codigo_solicitud,
+        estado_solicitud:  base.estado_solicitud,
+        periodo_academico: base.periodo_academico,
+        fecha_creacion:    base.fecha_creacion,
+        ultima_actualizacion: base.updated_at,
+        // ── Estudiante ────────────────────────────────────────────
+        estudiante: {
+          cod_alumno:          base.cod_alumno,
+          codigo_estudiantil:  base.codigo_estudiantil,
+          nombre_completo:     base.nombre_completo,
+          correo_institucional:base.correo_institucional,
+          semestre_actual:     base.semestre_actual,
+          promedio_acumulado:  base.promedio_acumulado,  // PAPA
+          jornada_actual:      base.jornada_actual_estudiante,
+          programa:            base.nombre_programa,
+        },
+        // ── Detalle solicitud ─────────────────────────────────────
+        detalle_solicitud: {
+          tipo_novedad:           base.tipo_novedad,
+          motivo_novedad:         base.motivo_novedad,
+          justificacion_detallada: base.justificacion_detallada,
+          validacion_json:        base.validacion_json,
+          grupo_actual:           grupoActual,
+          grupo_solicitado:       grupoNuevo,
+          resuelta_por:           base.resuelta_por_nombre ?? null,
+          resuelta_por_rol:       base.resuelta_por_rol    ?? null,
+        },
+        // ── Documentos ────────────────────────────────────────────
+        documentos,
+        // ── Historial de cambios ──────────────────────────────────
+        historial,
+      };
+    } catch (error) {
+      throw new ErrorBaseDatos(
+        `Error al obtener detalle de solicitud: ${(error as Error).message}`
+      );
+    }
+  }
 }

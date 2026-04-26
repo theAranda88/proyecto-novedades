@@ -430,5 +430,138 @@ enrutadorSolicitudes.get(
   controladorSolicitud.listarConFiltros,
 );
 
+/**
+ * @swagger
+ * /api/solicitudes/{id}/detalle:
+ *   get:
+ *     summary: Obtener detalle completo de una solicitud
+ *     description: |
+ *       Retorna en **una sola llamada** todos los datos necesarios para renderizar
+ *       la pantalla "Detalle de Solicitud":
+ *
+ *       | Bloque | Contenido |
+ *       |--------|-----------|
+ *       | `estudiante` | nombre_completo, codigo_estudiantil, programa, semestre, promedio_acumulado (PAPA), correo, jornada |
+ *       | `detalle_solicitud` | tipo_novedad, justificacion_detallada, motivo_novedad, grupo_actual, grupo_solicitado, validacion_json |
+ *       | `documentos` | id, nombre_archivo, tipo_mime, tamanio_bytes, url_archivo, fecha_subida |
+ *       | `historial` | línea de tiempo: radicación + notificaciones en orden cronológico |
+ *
+ *       **Control de acceso:**
+ *       - `SECRETARIA` / `ADMIN` → puede ver cualquier solicitud
+ *       - `ESTUDIANTE` → solo puede ver sus propias solicitudes (403 si intenta ver otra)
+ *
+ *       **Nota técnica — Historial:**
+ *       El historial se construye desde la tabla `notificaciones` (no existe tabla
+ *       `historial_solicitudes` en BD). La primera entrada siempre es la radicación.
+ *     tags:
+ *       - Solicitudes
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: ID numérico de la solicitud (id_solicitud en BD)
+ *         example: 1
+ *     responses:
+ *       200:
+ *         description: Detalle completo obtenido exitosamente
+ *         content:
+ *           application/json:
+ *             example:
+ *               ok: true
+ *               mensaje: "Detalle de solicitud obtenido correctamente"
+ *               datos:
+ *                 id_solicitud: "1"
+ *                 codigo_solicitud: "REQ-2026-001"
+ *                 estado_solicitud: "PENDIENTE"
+ *                 periodo_academico: "2026-1"
+ *                 fecha_creacion: "2026-03-21T18:25:16.276Z"
+ *                 ultima_actualizacion: "2026-03-21T18:25:16.276Z"
+ *                 estudiante:
+ *                   cod_alumno: "2024001"
+ *                   codigo_estudiantil: "2024001"
+ *                   nombre_completo: "Carlos Andres Perez Lopez"
+ *                   correo_institucional: "c.perez@proyectonovedades.edu.co"
+ *                   semestre_actual: 3
+ *                   promedio_acumulado: "3.80"
+ *                   jornada_actual: "manana"
+ *                   programa: "Ingenieria de Sistemas"
+ *                 detalle_solicitud:
+ *                   tipo_novedad: "CAMBIO_JORNADA"
+ *                   motivo_novedad: "CAMBIO_JORNADA - Periodo 2026-1"
+ *                   justificacion_detallada: "Necesito cambiar jornada por motivos laborales"
+ *                   validacion_json:
+ *                     aprobado: true
+ *                     tipo_solicitud: "cambio_jornada"
+ *                     validaciones: []
+ *                   grupo_actual:
+ *                     id: 3
+ *                     codigo_grupo: "G-01"
+ *                     jornada: "manana"
+ *                     dia_semana: "lunes"
+ *                     hora_inicio: "07:00:00"
+ *                     hora_fin: "09:00:00"
+ *                     nombre_curso: "Programacion I"
+ *                     cod_curso: "PRG201"
+ *                   grupo_solicitado:
+ *                     id: 5
+ *                     codigo_grupo: "G-02"
+ *                     jornada: "tarde"
+ *                     dia_semana: "lunes"
+ *                     hora_inicio: "14:00:00"
+ *                     hora_fin: "16:00:00"
+ *                     nombre_curso: "Programacion I"
+ *                     cod_curso: "PRG201"
+ *                   resuelta_por: null
+ *                   resuelta_por_rol: null
+ *                 documentos: []
+ *                 historial:
+ *                   - id_evento: 0
+ *                     descripcion: "Solicitud radicada"
+ *                     estado_nuevo: "PENDIENTE"
+ *                     estado_anterior: null
+ *                     fecha: "2026-03-21T18:25:16.276Z"
+ *                     actor: "Carlos Andres Perez Lopez"
+ *                     rol_actor: "estudiante"
+ *               codigo_estado: 200
+ *       400:
+ *         description: ID inválido (no numérico o ≤ 0)
+ *         content:
+ *           application/json:
+ *             example:
+ *               ok: false
+ *               mensaje: "ID de solicitud inválido — debe ser un número entero positivo"
+ *               datos: null
+ *               codigo_estado: 400
+ *       403:
+ *         description: Estudiante intentando ver solicitud de otro estudiante
+ *         content:
+ *           application/json:
+ *             example:
+ *               ok: false
+ *               mensaje: "No tiene permiso para ver esta solicitud"
+ *               datos: null
+ *               codigo_estado: 403
+ *       404:
+ *         description: Solicitud no encontrada o eliminada (soft delete)
+ *         content:
+ *           application/json:
+ *             example:
+ *               ok: false
+ *               mensaje: "No existe la solicitud con ID 999"
+ *               datos: null
+ *               codigo_estado: 404
+ */
+enrutadorSolicitudes.get(
+  '/:id/detalle',
+  verificarToken,
+  verificarRol(RolUsuario.ESTUDIANTE, RolUsuario.SECRETARIA, RolUsuario.ADMIN),
+  controladorSolicitud.obtenerDetalle,
+);
+
 export default enrutadorSolicitudes;
 

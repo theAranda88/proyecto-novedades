@@ -797,4 +797,50 @@ export class ServicioSolicitud {
       total_paginas: totalPaginas,
     };
   }
+
+  /**
+   * Obtiene el detalle completo de una solicitud para la pantalla "Detalle de Solicitud".
+   *
+   * Retorna en una sola llamada:
+   *  - Datos del estudiante (nombre, código, programa, semestre, PAPA, correo, jornada)
+   *  - Datos de la solicitud (tipo, justificación, motivo, grupos, validacion_json)
+   *  - Documentos adjuntos[]  (tabla documentos_adjuntos)
+   *  - Historial de cambios[] (construido desde notificaciones)
+   *
+   * Control de acceso:
+   *  - SECRETARIA / ADMIN → puede ver cualquier solicitud
+   *  - ESTUDIANTE → solo puede ver sus propias solicitudes (403 si intenta ver otra)
+   *
+   * @param idSolicitud - id_solicitud (PK tabla solicitudes)
+   * @param idUsuario   - id_usuario del token JWT
+   * @param rol         - rol del usuario autenticado
+   * @returns Objeto estructurado para la pantalla de detalle
+   * @throws {ErrorNegocio} 404 si no existe, 403 si no tiene permiso
+   */
+  async obtenerDetalle(
+    idSolicitud: number,
+    idUsuario: number,
+    rol: string,
+  ): Promise<object> {
+    const detalle = await this.repoSolicitud.obtenerDetalleSolicitud(idSolicitud);
+
+    if (!detalle) {
+      throw new ErrorNegocio(`No existe la solicitud con ID ${idSolicitud}`, 404);
+    }
+
+    // Control de acceso: ESTUDIANTE solo puede ver sus propias solicitudes
+    if (rol === 'estudiante') {
+      // Obtener el codigo_estudiantil del usuario autenticado
+      const usuario = await this.repoUsuario.obtenerPorId(idUsuario);
+      const codigoDelToken = usuario?.codigo_estudiantil ?? '';
+      const codigoDeLaSolicitud = detalle.estudiante?.codigo_estudiantil ?? '';
+
+      if (codigoDelToken !== codigoDeLaSolicitud) {
+        throw new ErrorNegocio('No tiene permiso para ver esta solicitud', 403);
+      }
+    }
+
+    return detalle;
+  }
 }
+

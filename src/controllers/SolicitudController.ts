@@ -26,6 +26,7 @@ export class ControladorSolicitud {
     this.actualizarEstado    = this.actualizarEstado.bind(this);
     this.obtenerPorId        = this.obtenerPorId.bind(this);
     this.listarConFiltros    = this.listarConFiltros.bind(this);
+    this.obtenerDetalle      = this.obtenerDetalle.bind(this);
   }
 
   /**
@@ -287,6 +288,43 @@ export class ControladorSolicitud {
       codAlumno:    resultado.rows[0].cod_alumno,
       estudianteSeq: Number(resultado.rows[0].seq),
     };
+  }
+
+  /**
+   * GET /api/solicitudes/:id/detalle
+   * Retorna el detalle completo de una solicitud para la pantalla "Detalle de Solicitud".
+   *
+   * Incluye en una sola respuesta:
+   *  - Datos del estudiante (nombre, código, programa, semestre, PAPA, correo)
+   *  - Datos de la solicitud (tipo, justificación, grupos actual/solicitado)
+   *  - Documentos adjuntos[]
+   *  - Historial de cambios[]
+   *
+   * Control de acceso:
+   *  - SECRETARIA / ADMIN → cualquier solicitud
+   *  - ESTUDIANTE → solo sus propias solicitudes
+   *
+   * @acceso ESTUDIANTE (propias) | SECRETARIA | ADMIN
+   */
+  async obtenerDetalle(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const idSolicitud = Number(req.params.id);
+
+      if (isNaN(idSolicitud) || idSolicitud <= 0) {
+        RespuestaUtil.error(res, 'ID de solicitud inválido — debe ser un número entero positivo', 400);
+        return;
+      }
+
+      const detalle = await this.servicioSolicitud.obtenerDetalle(
+        idSolicitud,
+        req.usuario!.id_usuario,
+        req.usuario!.rol,
+      );
+
+      RespuestaUtil.exito(res, 'Detalle de solicitud obtenido correctamente', detalle, 200);
+    } catch (error) {
+      next(error);
+    }
   }
 }
 

@@ -600,24 +600,6 @@
           }
         },
         {
-          "name": "GET Obtener Detalle de Solicitud",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/api/solicitudes/1",
-              "host": ["{{base_url}}"],
-              "path": ["api", "solicitudes", "1"]
-            },
-            "description": "Obtiene los detalles completos de una solicitud específica por su ID. El estudiante solo puede ver sus propias solicitudes."
-          }
-        },
-        {
           "name": "POST Crear Solicitud - Cambio Curso",
           "request": {
             "method": "POST",
@@ -791,6 +773,67 @@
               "path": ["api", "estudiantes", "solicitudes", "1", "adjunto"]
             }
           }
+        },
+        {
+          "name": "GET Obtener Detalle de Solicitud",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Tiene bloque estudiante', () => pm.expect(r.datos).to.have.property('estudiante'));",
+                  "pm.test('Tiene bloque detalle_solicitud', () => pm.expect(r.datos).to.have.property('detalle_solicitud'));",
+                  "pm.test('Tiene documentos (array)', () => pm.expect(r.datos.documentos).to.be.an('array'));",
+                  "pm.test('Tiene historial (array)', () => pm.expect(r.datos.historial).to.be.an('array'));",
+                  "pm.test('Estudiante tiene nombre_completo', () => pm.expect(r.datos.estudiante).to.have.property('nombre_completo'));",
+                  "pm.test('Estudiante tiene promedio_acumulado (PAPA)', () => pm.expect(r.datos.estudiante).to.have.property('promedio_acumulado'));",
+                  "pm.test('Historial inicia con radicacion', () => {",
+                  "    pm.expect(r.datos.historial[0].descripcion).to.eql('Solicitud radicada');",
+                  "    pm.expect(r.datos.historial[0].estado_nuevo).to.eql('PENDIENTE');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/solicitudes/{{solicitud_id}}/detalle",
+              "host": ["{{base_url}}"],
+              "path": ["api", "solicitudes", "{{solicitud_id}}", "detalle"]
+            },
+            "description": "Retorna en **una sola llamada** todos los datos para la pantalla 'Detalle de Solicitud':\n\n**Bloques de respuesta:**\n- `estudiante` — nombre_completo, codigo_estudiantil, programa, semestre_actual, promedio_acumulado (PAPA), correo_institucional, jornada_actual\n- `detalle_solicitud` — tipo_novedad, justificacion_detallada, motivo_novedad, grupo_actual, grupo_solicitado, validacion_json, resuelta_por\n- `documentos[]` — id, nombre_archivo, tipo_mime, tamanio_bytes, url_archivo, fecha_subida\n- `historial[]` — línea de tiempo: radicación + notificaciones en orden cronológico\n\n**Control de acceso:**\n- SECRETARIA / ADMIN → cualquier solicitud\n- ESTUDIANTE → solo sus propias (403 si intenta ver otra)\n\n**Usa variable `{{solicitud_id}}`** — cámbiala al ID que quieras consultar (ej: 1, 2, 3)."
+          },
+          "response": [
+            {
+              "name": "200 — Detalle completo (CAMBIO_JORNADA PENDIENTE)",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Detalle de solicitud obtenido correctamente\",\n  \"datos\": {\n    \"id_solicitud\": \"1\",\n    \"codigo_solicitud\": \"REQ-2026-001\",\n    \"estado_solicitud\": \"PENDIENTE\",\n    \"periodo_academico\": \"2026-1\",\n    \"fecha_creacion\": \"2026-03-21T18:25:16.276Z\",\n    \"ultima_actualizacion\": \"2026-03-21T18:25:16.276Z\",\n    \"estudiante\": {\n      \"cod_alumno\": \"2024001\",\n      \"codigo_estudiantil\": \"2024001\",\n      \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n      \"correo_institucional\": \"c.perez@proyectonovedades.edu.co\",\n      \"semestre_actual\": 3,\n      \"promedio_acumulado\": \"3.80\",\n      \"jornada_actual\": \"manana\",\n      \"programa\": \"Ingenieria de Sistemas\"\n    },\n    \"detalle_solicitud\": {\n      \"tipo_novedad\": \"CAMBIO_JORNADA\",\n      \"motivo_novedad\": \"CAMBIO_JORNADA - Periodo 2026-1\",\n      \"justificacion_detallada\": \"Necesito cambiar jornada por motivos laborales.\",\n      \"validacion_json\": { \"aprobado\": true, \"tipo_solicitud\": \"cambio_jornada\", \"validaciones\": [] },\n      \"grupo_actual\": { \"id\": 3, \"codigo_grupo\": \"G-01\", \"jornada\": \"manana\", \"dia_semana\": \"lunes\", \"hora_inicio\": \"07:00:00\", \"hora_fin\": \"09:00:00\", \"nombre_curso\": \"Programacion I\", \"cod_curso\": \"PRG201\" },\n      \"grupo_solicitado\": null,\n      \"resuelta_por\": null,\n      \"resuelta_por_rol\": null\n    },\n    \"documentos\": [],\n    \"historial\": [\n      { \"id_evento\": 0, \"descripcion\": \"Solicitud radicada\", \"estado_nuevo\": \"PENDIENTE\", \"estado_anterior\": null, \"fecha\": \"2026-03-21T18:25:16.276Z\", \"actor\": \"Carlos Andres Perez Lopez\", \"rol_actor\": \"estudiante\" }\n    ]\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "404 — Solicitud no encontrada",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"No existe la solicitud con ID 999\",\n  \"datos\": null,\n  \"codigo_estado\": 404\n}"
+            },
+            {
+              "name": "403 — Estudiante viendo solicitud ajena",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"No tiene permiso para ver esta solicitud\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
+            }
+          ]
         }
       ]
     },
