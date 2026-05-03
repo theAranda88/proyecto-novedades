@@ -178,3 +178,5 @@ src/config/*.json
 !src/config/*.example.json
 
 .vercel
+
+src/config/firebase-credentials.json
