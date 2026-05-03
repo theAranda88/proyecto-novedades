@@ -15,39 +15,50 @@ const opcionesSwaggerJSDoc: swaggerJSDoc.Options = {
     openapi: '3.0.0',
     info: {
       title:       'Proyecto Novedades — API',
-      version:     '2.1.0',
-      description: `Sistema de gestión de novedades académicas — Proyecto Novedades v2.1.0
+      version:     '2.2.0',
+      description: `Sistema de gestión de novedades académicas — Proyecto Novedades v2.2.0
 
-Stack: Node.js · Express · TypeScript · PostgreSQL · Railway
+Stack: Node.js | Express | TypeScript | PostgreSQL | Socket.io | Firebase Cloud Messaging
 
-Environments disponibles:
+Ambientes disponibles:
 - DESARROLLO: http://localhost:3000
 - PRODUCCION: https://proyecto-novedades-six.vercel.app (Vercel)
-- PROXIMO: https://api.proyectonovedades.edu.co (Dominio personalizado)
+- PERSONALIZADO: https://api.proyectonovedades.edu.co (Próximo)
 
-Autenticación: Bearer JWT — Ejecuta POST /api/auth/login para obtener el token, luego haz clic en Authorize e ingresa: Bearer <tu_token>
+AUTENTICACION:
+- Ejecuta POST /api/auth/login para obtener el token JWT
+- Haz clic en el botón "Authorize" arriba a la derecha
+- Ingresa: Bearer [tu_token_aqui]
+
+CAMBIOS EN v2.2 — Arquitectura Híbrida de Notificaciones
+
+Nuevas Características:
+- Socket.io para notificaciones en tiempo real (WebSocket)
+- Firebase Cloud Messaging para notificaciones push móviles
+- Tabla dispositivos_push para gestión de device tokens
+- Orquestador de notificaciones con fallback automático
+
+Nuevos Endpoints:
+- GET /api/notificaciones — Obtener todas las notificaciones (paginado)
+- GET /api/notificaciones/no-leidas — Últimas 20 notificaciones no leídas
+- GET /api/notificaciones/estadisticas — Estadísticas de notificaciones por tipo
+- PATCH /api/notificaciones/{id}/leer — Marcar como leída
+- PATCH /api/notificaciones/marcar-todas-leidas — Marcar todas como leídas
+- POST /api/notificaciones/dispositivos/registrar — Registrar device token FCM
+- GET /api/notificaciones/dispositivos — Obtener dispositivos registrados
+- DELETE /api/notificaciones/dispositivos/{id}/desactivar — Desactivar dispositivo
+
+Socket.io Events:
+- Cliente: Conectar con token JWT en handshake.auth.token
+- Server emite: notificacion:solicitud_nueva, notificacion:solicitud_aprobada, notificacion:solicitud_rechazada
 
 ---
 
-NOVEDADES v2.1 — Dashboard de Secretaría
-
-✨ Nuevos Endpoints:
-- GET /api/dashboard/secretaria — Métricas consolidadas (pendientes, aprobadas, tiempo respuesta)
-- GET /api/solicitudes/panel/listar — Listado con filtros, búsqueda y paginación
-
-✨ Cambios de estado transaccionales (ACID):
-- PATCH /api/solicitudes/:id/estado ahora es TRANSACCIONAL
-  * Valida transición de estado
-  * Crea notificación automática al estudiante
-  * ROLLBACK automático si hay error
-
----
-
-ESTADO DEL DEPLOYMENT
+ESTADO DEL SISTEMA
 
 | Aspecto | Valor |
 |---------|-------|
-| Plataforma | Vercel (Serverless) |
+| Plataforma | Vercel (Serverless) + Node.js |
 | Base de Datos | PostgreSQL en Railway |
 | Estado | En Producción |
 | URL Publica | https://proyecto-novedades-six.vercel.app |

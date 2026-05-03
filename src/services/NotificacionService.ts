@@ -1,12 +1,16 @@
 // src/services/NotificacionService.ts
 // Servicio para gestión de notificaciones a estudiantes
+// REFACTORIZADO: Ahora usa RepositorioNotificacion para mayor flexibilidad
 
-import { pool } from '../config/database';
-import { ErrorBaseDatos } from '../middlewares/errorHandler';
-
-export type TipoNotificacion = 'solicitud_aprobada' | 'solicitud_rechazada' | 'solicitud_revision';
+import { RepositorioNotificacion, TipoNotificacion, CanalEnvio } from '../repositories/notificacion.repository';
+import { ErrorBaseDatos, ErrorNegocio } from '../middlewares/errorHandler';
 
 export class ServicioNotificacion {
+  private repositorio: RepositorioNotificacion;
+
+  constructor() {
+    this.repositorio = new RepositorioNotificacion();
+  }
 
   /**
    * Crea una notificación para un usuario.
@@ -27,15 +31,16 @@ export class ServicioNotificacion {
     try {
       const { titulo, mensaje } = this.generarContenidoNotificacion(tipo, observaciones);
 
-      const resultado = await pool.query<{ id: number }>(
-        `INSERT INTO notificaciones
-            (usuario_id, solicitud_id, titulo, mensaje, leido)
-         VALUES ($1, $2, $3, $4, FALSE)
-         RETURNING id`,
-        [usuarioId, solicitudId, titulo, mensaje],
-      );
+      const id = await this.repositorio.crear({
+        usuario_id: usuarioId,
+        solicitud_id: solicitudId,
+        titulo,
+        mensaje,
+        tipo_notificacion: tipo,
+        canal_envio: 'bd_pendiente', // Inicialmente pendiente
+      });
 
-      return { id: resultado.rows[0].id };
+      return { id };
     } catch (error) {
       throw new ErrorBaseDatos(
         `Error al crear notificación: ${(error as Error).message}`,
@@ -71,6 +76,18 @@ export class ServicioNotificacion {
           mensaje: 'Tu solicitud de novedad académica está siendo revisada por la Secretaría Académica.',
         };
 
+      case 'solicitud_nueva':
+        return {
+          titulo: 'Nueva Solicitud Recibida',
+          mensaje: 'Se ha recibido una nueva solicitud de novedad académica que requiere revisión.',
+        };
+
+      case 'cambio_estado':
+        return {
+          titulo: 'Cambio de Estado',
+          mensaje: 'El estado de tu solicitud ha sido actualizado.',
+        };
+
       default:
         return {
           titulo: 'Notificación del Sistema',
@@ -87,16 +104,24 @@ export class ServicioNotificacion {
    */
   async obtenerNoLeidas(usuarioId: number): Promise<any[]> {
     try {
-      const resultado = await pool.query(
-        `SELECT id, solicitud_id, titulo, mensaje, created_at
-           FROM notificaciones
-          WHERE usuario_id = $1
-            AND leido = FALSE
-          ORDER BY created_at DESC
-          LIMIT 10`,
-        [usuarioId],
+      return await this.repositorio.obtenerNoLeidasPorUsuario(usuarioId, 20);
+    } catch (error) {
+      throw new ErrorBaseDatos(
+        `Error al obtener notificaciones: ${(error as Error).message}`,
       );
-      return resultado.rows;
+    }
+  }
+
+  /**
+   * Obtiene todas las notificaciones de un usuario con paginación
+   */
+  async obtenerPorUsuario(
+    usuarioId: number,
+    pagina: number = 1,
+    tamanio: number = 10,
+  ): Promise<{ datos: any[]; total: number }> {
+    try {
+      return await this.repositorio.obtenerPorUsuario(usuarioId, pagina, tamanio);
     } catch (error) {
       throw new ErrorBaseDatos(
         `Error al obtener notificaciones: ${(error as Error).message}`,
@@ -112,15 +137,39 @@ export class ServicioNotificacion {
    */
   async marcarComoLeida(notificacionId: number): Promise<void> {
     try {
-      await pool.query(
-        `UPDATE notificaciones
-            SET leido = TRUE
-          WHERE id = $1`,
-        [notificacionId],
-      );
+      await this.repositorio.marcarComoLeida(notificacionId);
     } catch (error) {
       throw new ErrorBaseDatos(
         `Error al marcar notificación como leída: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Marca todas las notificaciones de un usuario como leídas
+   */
+  async marcarTodasComoLeidas(usuarioId: number): Promise<number> {
+    try {
+      return await this.repositorio.marcarTodasComoLeidas(usuarioId);
+    } catch (error) {
+      throw new ErrorBaseDatos(
+        `Error al marcar notificaciones como leídas: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Obtiene estadísticas de notificaciones no leídas
+   */
+  async obtenerEstadisticas(usuarioId: number): Promise<{
+    total: number;
+    por_tipo: Record<string, number>;
+  }> {
+    try {
+      return await this.repositorio.obtenerEstadisticasNoLeidas(usuarioId);
+    } catch (error) {
+      throw new ErrorBaseDatos(
+        `Error al obtener estadísticas: ${(error as Error).message}`,
       );
     }
   }

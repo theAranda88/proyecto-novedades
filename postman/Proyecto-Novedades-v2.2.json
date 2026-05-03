@@ -1,0 +1,505 @@
+{
+  "info": {
+    "_postman_id": "proyecto-novedades-2.2.0",
+    "name": "Proyecto Novedades v2.2.0",
+    "description": "API de gestión de novedades académicas con soporte híbrido para notificaciones (WebSocket + FCM)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Autenticacion",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo_estudiantil\": \"2024001\",\n  \"password\": \"Password123\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/login",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cambiar contraseña temporal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password_nuevo\": \"MiNuevaContrasena2024\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/auth/change-password",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "change-password"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "item": [
+        {
+          "name": "Obtener todas las notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones?pagina=1&tamanio=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanio",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener notificaciones no leidas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/no-leidas",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "no-leidas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener estadisticas de notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/estadisticas",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "estadisticas"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar notificacion como leida",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/1/leer",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "1",
+                "leer"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Marcar todas las notificaciones como leidas",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/marcar-todas-leidas",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "marcar-todas-leidas"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dispositivos Push",
+      "item": [
+        {
+          "name": "Registrar dispositivo para notificaciones push",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"device_token\": \"d_4eJLbF7g_-FZG2e_Hk1:APA91b...\",\n  \"plataforma\": \"android\",\n  \"metadata\": {\n    \"so\": \"Android 12\",\n    \"modelo\": \"Samsung Galaxy A12\",\n    \"version_app\": \"1.0.0\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/dispositivos/registrar",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "dispositivos",
+                "registrar"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener dispositivos registrados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/dispositivos",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "dispositivos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Desactivar dispositivo",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/notificaciones/dispositivos/1/desactivar",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "notificaciones",
+                "dispositivos",
+                "1",
+                "desactivar"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Solicitudes",
+      "item": [
+        {
+          "name": "Crear solicitud",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo_novedad\": \"CAMBIO_CURSO\",\n  \"motivo_novedad\": \"Cambio de curso para mejor disponibilidad\",\n  \"justificacion_detallada\": \"Necesito cambiar el horario debido a conflicto laboral\",\n  \"grupo_actual_id\": 1,\n  \"grupo_nuevo_id\": 2,\n  \"documentos_adjuntos\": [\n    {\n      \"nombre_archivo\": \"justificacion.pdf\",\n      \"tipo_contenido\": \"application/pdf\",\n      \"contenido_base64\": \"JVBERi0xLjQK\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/solicitudes",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "solicitudes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener solicitudes del estudiante",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/solicitudes?pagina=1&tamanio=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "solicitudes"
+              ],
+              "query": [
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanio",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Obtener detalles de solicitud",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/solicitudes/1",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "solicitudes",
+                "1"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Listar solicitudes con filtros (Secretaria)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/solicitudes/panel/listar?estado=PENDIENTE&pagina=1&tamanio=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "solicitudes",
+                "panel",
+                "listar"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "PENDIENTE"
+                },
+                {
+                  "key": "pagina",
+                  "value": "1"
+                },
+                {
+                  "key": "tamanio",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Cambiar estado de solicitud",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado_nuevo\": \"APROBADA\",\n  \"observaciones\": \"Solicitud procesada correctamente\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/api/solicitudes/1/estado",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "solicitudes",
+                "1",
+                "estado"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Obtener metricas del dashboard (Secretaria)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{JWT_TOKEN}}"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/dashboard/secretaria",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "api",
+                "dashboard",
+                "secretaria"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{BASE_URL}}/api/health",
+          "host": [
+            "{{BASE_URL}}"
+          ],
+          "path": [
+            "api",
+            "health"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "JWT_TOKEN",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
+

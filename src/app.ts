@@ -13,6 +13,8 @@ import enrutadorEstudiante        from './routes/estudianteRoutes';
 import enrutadorGrupos            from './routes/grupoRoutes';
 import enrutadorUsuarios          from './routes/usuarioRoutes';
 import enrutadorDashboard         from './routes/dashboardRoutes';
+import enrutadorNotificaciones    from './routes/notificacionRoutes';
+import enrutadorMigraciones       from './routes/migracionRoutes';
 import { manejadorErroresGlobal } from './middlewares/errorHandler';
 import { configurarSwagger }      from './config/swagger';
 
@@ -152,11 +154,13 @@ app.use('/api/auth',       enrutadorAuth);
 // ------------------------------------------------------------
 // RUTAS PROTEGIDAS (requieren JWT válido + primer_login = FALSE)
 // ------------------------------------------------------------
-app.use('/api/dashboard',    enrutadorDashboard);
-app.use('/api/solicitudes',  enrutadorSolicitudes);
-app.use('/api/estudiantes',  enrutadorEstudiante);
-app.use('/api/grupos',       enrutadorGrupos);
-app.use('/api/usuarios',     enrutadorUsuarios); // Creación + Gestión integral (CRUD)
+app.use('/api/dashboard',       enrutadorDashboard);
+app.use('/api/solicitudes',     enrutadorSolicitudes);
+app.use('/api/estudiantes',     enrutadorEstudiante);
+app.use('/api/grupos',          enrutadorGrupos);
+app.use('/api/usuarios',        enrutadorUsuarios);
+app.use('/api/notificaciones',  enrutadorNotificaciones);
+app.use('/api/admin/migracion', enrutadorMigraciones);
 
 // ------------------------------------------------------------
 // RUTA NO ENCONTRADA — 404

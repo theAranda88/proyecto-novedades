@@ -4,9 +4,10 @@
 
 import { RepositorioSolicitud }            from '../repositories/solicitud.repository';
 import { RepositorioUsuario }              from '../repositories/usuario.repository';
+import { TipoNotificacion }                from '../repositories/notificacion.repository';
 import { TDatosSolicitud, TActualizarEstado } from '../schemas/solicitud.schema';
 import { ErrorNegocio }                    from '../middlewares/errorHandler';
-import { ServicioNotificacion, TipoNotificacion } from './NotificacionService';
+import { ServicioNotificacion }            from './NotificacionService';
 import { pool }                             from '../config/database';
 
 /** Resultado de una validación individual para el validacion_json */
