@@ -57,6 +57,25 @@ export class ServicioEstudiante {
   }
 
   /**
+   * Obtiene las materias matriculadas del estudiante autenticado.
+   * El front puede usar este endpoint para mostrar la carga académica vigente.
+   *
+   * @param usuarioId - id_usuario del token JWT del estudiante
+   * @returns {Promise<object[]>} Lista de materias matriculadas
+   */
+  async obtenerMateriasMatriculadas(usuarioId: number): Promise<object[]> {
+    const perfil = await this.repoEstudiante.buscarPerfilCompleto(usuarioId);
+    if (!perfil) {
+      throw new ErrorNegocio(
+        'No se encontró el perfil académico. Contacte a la secretaría para vincular su cuenta.',
+        404,
+      );
+    }
+
+    return this.repoEstudiante.listarMateriasMatriculadas(usuarioId);
+  }
+
+  /**
    * Lista los grupos de curso disponibles (cupos > 0) para el periodo indicado.
    * El front usa este endpoint para poblar los dropdowns del formulario:
    * - "Curso Actual" (cambio_curso)

@@ -36,6 +36,24 @@ type FilaGrupoCurso = {
   periodo:           string;
 };
 
+type FilaMateriaMatriculada = {
+  grupo_id:               number;
+  curso_id:               number;
+  cod_curso:              string;
+  nombre_curso:           string;
+  creditos:               number;
+  codigo_grupo:           string;
+  jornada:                string;
+  dia_semana:             string;
+  hora_inicio:            string;
+  hora_fin:               string;
+  docente:                string;
+  aula:                   string | null;
+  periodo:                string;
+  creditos_inscritos:     number;
+  creditos_max_permitidos: number;
+};
+
 export class RepositorioEstudiante {
 
   /**
@@ -140,6 +158,57 @@ export class RepositorioEstudiante {
       return resultado.rows;
     } catch (error) {
       throw new ErrorBaseDatos(`Error al listar grupos disponibles: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Lista las materias matriculadas del estudiante autenticado.
+   * Resuelve el id secuencial requerido por inscripciones_activas a partir
+   * de la relación estudiantes.usuario_id.
+   *
+   * @param usuarioId - id_usuario del token JWT
+   * @returns {Promise<FilaMateriaMatriculada[]>} Materias inscritas del estudiante
+   * @throws {ErrorBaseDatos} Si falla la consulta SQL
+   */
+  async listarMateriasMatriculadas(usuarioId: number): Promise<FilaMateriaMatriculada[]> {
+    try {
+      const resultado = await pool.query<FilaMateriaMatriculada>(
+        `WITH estudiante_actual AS (
+            SELECT
+              ROW_NUMBER() OVER (ORDER BY e.cod_alumno) AS estudiante_seq,
+              COALESCE(e.creditos_inscritos, 0)         AS creditos_inscritos,
+              COALESCE(e.creditos_max_permitidos, 20)   AS creditos_max_permitidos
+            FROM estudiantes e
+            WHERE e.usuario_id = $1
+              AND e.deleted_at IS NULL
+            LIMIT 1
+         )
+         SELECT
+            g.id                  AS grupo_id,
+            c.id                  AS curso_id,
+            c.cod_curso,
+            c.nombre_curso,
+            COALESCE(c.creditos, 3) AS creditos,
+            g.codigo_grupo,
+            g.jornada,
+            g.dia_semana,
+            g.hora_inicio::TEXT   AS hora_inicio,
+            g.hora_fin::TEXT      AS hora_fin,
+            g.docente,
+            g.aula,
+            ia.periodo,
+            ea.creditos_inscritos,
+            ea.creditos_max_permitidos
+           FROM estudiante_actual ea
+           JOIN inscripciones_activas ia ON ia.estudiante_id = ea.estudiante_seq
+           JOIN grupos_curso g ON g.id = ia.grupo_id
+           JOIN cursos c ON c.id = g.curso_id
+          ORDER BY ia.periodo DESC, c.nombre_curso ASC, g.codigo_grupo ASC`,
+        [usuarioId],
+      );
+      return resultado.rows;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al listar materias matriculadas: ${(error as Error).message}`);
     }
   }
 

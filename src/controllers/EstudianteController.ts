@@ -15,6 +15,7 @@ export class ControladorEstudiante {
   constructor() {
     this.servicioEstudiante = new ServicioEstudiante();
     this.obtenerPerfil      = this.obtenerPerfil.bind(this);
+    this.obtenerMateriasMatriculadas = this.obtenerMateriasMatriculadas.bind(this);
     this.listarGrupos       = this.listarGrupos.bind(this);
     this.subirAdjunto       = this.subirAdjunto.bind(this);
   }
@@ -36,6 +37,45 @@ export class ControladorEstudiante {
         res,
         'Perfil académico obtenido exitosamente',
         perfil,
+        200,
+      );
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/estudiantes/materias
+   * GET /api/estudiantes/materias-matriculadas
+   * Devuelve la carga académica vigente del estudiante autenticado.
+   *
+   * @acceso ESTUDIANTE
+   */
+  async obtenerMateriasMatriculadas(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const usuario  = req.usuario!;
+
+      if (
+        req.params['codigo_estudiantil']
+        && usuario.codigo_estudiantil
+        && req.params['codigo_estudiantil'] !== usuario.codigo_estudiantil
+      ) {
+        RespuestaUtil.error(
+          res,
+          'El código estudiantil solicitado no coincide con el usuario autenticado',
+          403,
+        );
+        return;
+      }
+
+      const materias = await this.servicioEstudiante.obtenerMateriasMatriculadas(usuario.id_usuario);
+
+      RespuestaUtil.exito(
+        res,
+        materias.length > 0
+          ? `${materias.length} materia(s) matriculada(s) encontradas`
+          : 'El estudiante no tiene materias matriculadas en este momento',
+        materias,
         200,
       );
     } catch (error) {

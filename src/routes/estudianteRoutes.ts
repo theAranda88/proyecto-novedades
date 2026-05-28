@@ -1,6 +1,8 @@
 // src/routes/estudianteRoutes.ts
 // Rutas del módulo estudiante:
 //   GET  /api/estudiantes/perfil                 → Info académica para formulario
+//   GET  /api/estudiantes/materias               → Materias matriculadas del estudiante
+//   GET  /api/estudiantes/materias-matriculadas  → Alias de compatibilidad
 //   GET  /api/grupos                             → Dropdowns grupos disponibles
 //   POST /api/estudiantes/solicitudes/:id/adjunto → Subir documento adjunto (Base64)
 
@@ -83,6 +85,50 @@ enrutadorEstudiante.get(
   verificarToken,
   verificarRol(RolUsuario.ESTUDIANTE),
   controladorEst.obtenerPerfil,
+);
+
+/**
+ * @swagger
+ * /api/estudiantes/materias:
+ *   get:
+ *     summary: Obtener materias matriculadas del estudiante
+ *     description: |
+ *       Devuelve la carga académica vigente del estudiante autenticado.
+ *       Cada elemento corresponde a una inscripción activa con su curso,
+ *       grupo y horario.
+ *     tags:
+ *       - Estudiantes
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Materias matriculadas obtenidas exitosamente
+ *       401:
+ *         description: Token ausente o inválido
+ *       403:
+ *         description: primer_login pendiente
+ *       404:
+ *         description: Perfil académico no encontrado
+ */
+enrutadorEstudiante.get(
+  '/materias',
+  verificarToken,
+  verificarRol(RolUsuario.ESTUDIANTE),
+  controladorEst.obtenerMateriasMatriculadas,
+);
+
+enrutadorEstudiante.get(
+  '/materias-matriculadas',
+  verificarToken,
+  verificarRol(RolUsuario.ESTUDIANTE),
+  controladorEst.obtenerMateriasMatriculadas,
+);
+
+enrutadorEstudiante.get(
+  '/:codigo_estudiantil/materias',
+  verificarToken,
+  verificarRol(RolUsuario.ESTUDIANTE),
+  controladorEst.obtenerMateriasMatriculadas,
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
