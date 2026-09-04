@@ -1,10 +1,14 @@
 // src/controllers/AuthController.ts
-// Controlador HTTP para autenticación — Implementa HU_001 completa
+// Controlador HTTP para autenticación — Implementa HU_001 + login Google
 
 import { Request, Response, NextFunction } from 'express';
 import { ServicioAutenticacion }            from '../services/AutenticadorService';
 import { RespuestaUtil }                    from '../utils/RespuestaUtil';
-import { TDatosLogin, TDatosCambioPassword } from '../schemas/auth.schema';
+import {
+  TDatosLogin,
+  TDatosLoginGoogle,
+  TDatosCambioPassword,
+} from '../schemas/auth.schema';
 
 /**
  * Controlador que maneja las peticiones HTTP relacionadas
@@ -23,13 +27,14 @@ export class ControladorAutenticacion {
   constructor() {
     this.servicioAutenticacion = new ServicioAutenticacion();
     this.login           = this.login.bind(this);
+    this.loginGoogle     = this.loginGoogle.bind(this);
     this.cambiarPassword = this.cambiarPassword.bind(this);
     this.olvidoPassword  = this.olvidoPassword.bind(this);
   }
 
   /**
    * POST /api/auth/login
-   * Autentica con codigo_estudiantil + password.
+   * Autentica con correo institucional + password.
    * Si primer_login = TRUE devuelve el token con la flag para forzar
    * el cambio de contraseña antes de acceder al sistema.
    *
@@ -38,7 +43,7 @@ export class ControladorAutenticacion {
    */
   async login(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const datos    = req.body as TDatosLogin;
+      const datos     = req.body as TDatosLogin;
       const resultado = await this.servicioAutenticacion.iniciarSesion(datos);
 
       const mensaje = resultado.primer_login
@@ -46,6 +51,29 @@ export class ControladorAutenticacion {
         : `Bienvenido, ${resultado.nombre_completo}. Sesión iniciada correctamente`;
 
       RespuestaUtil.exito(res, mensaje, resultado, 200);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/auth/google
+   * Autentica con ID token de Google (Workspace institucional).
+   * No crea cuentas: el correo debe existir en usuarios.
+   *
+   * @seguridad Rate limit: 10 intentos por IP cada 15 minutos
+   */
+  async loginGoogle(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const datos     = req.body as TDatosLoginGoogle;
+      const resultado = await this.servicioAutenticacion.iniciarSesionConGoogle(datos.id_token);
+
+      RespuestaUtil.exito(
+        res,
+        `Bienvenido, ${resultado.nombre_completo}. Sesión iniciada correctamente`,
+        resultado,
+        200,
+      );
     } catch (error) {
       next(error);
     }
@@ -84,10 +112,9 @@ export class ControladorAutenticacion {
    */
   async olvidoPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // Respuesta genérica independiente de si el código existe (no revelar info)
       RespuestaUtil.exito(
         res,
-        'Si el código estudiantil existe, recibirá un correo con instrucciones para restablecer su contraseña',
+        'Si el correo existe, recibirá instrucciones para restablecer su contraseña',
         null,
         200,
       );

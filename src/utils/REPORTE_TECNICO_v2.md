@@ -104,7 +104,8 @@ Cada tipo ejecuta validaciones en orden y guarda el resultado en `validacion_jso
 
 | Regla | Implementación | Archivo |
 |---|---|---|
-| Login con `codigo_estudiantil` | `esquemaLogin` (Zod) + `buscarPorCodigo()` | `auth.schema.ts` / `usuario.repository.ts` |
+| Login con correo institucional | `esquemaLogin` (Zod) + `buscarPorCorreo()` | `auth.schema.ts` / `usuario.repository.ts` |
+| Login Google Workspace | `esquemaLoginGoogle` + `verifyIdToken` + dominio `uniautonoma.edu.co` | `AutenticadorService.ts` |
 | bcrypt cost ≥ 12 | `BCRYPT_COST = 12` desde `.env` | `AutenticadorService.ts` |
 | Bloqueo 5 intentos / 15 min | `registrarIntentoFallido()` → `bloqueado_hasta = NOW() + 15min` | `usuario.repository.ts` |
 | HTTP 423 cuenta bloqueada | Chequeo `bloqueado_hasta > NOW()` antes de bcrypt | `AutenticadorService.ts` |
@@ -123,6 +124,7 @@ Cada tipo ejecuta validaciones en orden y guarda el resultado en `validacion_jso
 | Endpoint | estudiante | secretaria | admin |
 |---|:---:|:---:|:---:|
 | `POST /api/auth/login` | ✅ | ✅ | ✅ |
+| `POST /api/auth/google` | ✅ | ✅ | ✅ |
 | `POST /api/auth/change-password` | ✅ | ✅ | ✅ |
 | `POST /api/auth/forgot-password` | ✅ | ✅ | ✅ |
 | `POST /api/solicitudes` | ✅ | ❌ | ✅ |
@@ -149,13 +151,13 @@ Cada tipo ejecuta validaciones en orden y guarda el resultado en `validacion_jso
 | Carpeta | Requests | Estado |
 |---|---|---|
 | Health Check | 1 | ✅ Actualizado |
-| Autenticacion (HU_001) | 7 | ✅ Usa `codigo_estudiantil`, roles en minuscula, `primer_login`, token temporal |
+| Autenticacion (HU_001) | 8 | ✅ Correo + password, Google `id_token`, `primer_login`, token temporal |
 | Solicitudes de Novedad (HU_DB §5) | 9 | ✅ Nuevo — adicion, cambio_curso, cambio_jornada, curso_dirigido, PATCH estados |
 
 **Variables Postman:**
 - `{{token}}` — se llena automaticamente al hacer login exitoso
 - `{{token_primer_login}}` — token temporal para `change-password`
-- `{{solicitud_id}}` — se llena al listar todas las solicitudes
+- `{{google_id_token}}` — ID token de Google Identity Services para `POST /api/auth/google`
 
 ---
 

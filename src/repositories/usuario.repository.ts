@@ -18,7 +18,22 @@ type FilaUsuario = {
   ultimo_login:        Date | null;
   activo:              boolean;
   deleted_at:          Date | null;
+  google_sub:          string | null;
 };
+
+const SQL_COLUMNAS_USUARIO = `id_usuario          AS id,
+                nombre_completo,
+                codigo_estudiantil,
+                email_institucional,
+                password_hash,
+                LOWER(rol::TEXT)    AS rol,
+                primer_login,
+                intentos_fallidos,
+                bloqueado_hasta,
+                ultimo_login,
+                activo,
+                deleted_at,
+                google_sub`;
 
 type FilaEstudianteBasica = {
   id:                      number;
@@ -42,18 +57,7 @@ export class RepositorioUsuario {
   async buscarPorCodigo(codigoEstudiantil: string): Promise<FilaUsuario | null> {
     try {
       const resultado = await pool.query<FilaUsuario>(
-        `SELECT id_usuario          AS id,
-                nombre_completo,
-                codigo_estudiantil,
-                email_institucional,
-                password_hash,
-                LOWER(rol::TEXT)    AS rol,
-                primer_login,
-                intentos_fallidos,
-                bloqueado_hasta,
-                ultimo_login,
-                activo,
-                deleted_at
+        `SELECT ${SQL_COLUMNAS_USUARIO}
            FROM usuarios
           WHERE codigo_estudiantil = $1
             AND deleted_at IS NULL
@@ -63,6 +67,96 @@ export class RepositorioUsuario {
       return resultado.rows[0] ?? null;
     } catch (error) {
       throw new ErrorBaseDatos(`Error al buscar usuario por código: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Busca un usuario activo por su correo institucional (sin distinguir mayúsculas).
+   * Aplica soft delete (deleted_at IS NULL).
+   *
+   * @param correo - Correo institucional del usuario
+   * @returns {Promise<FilaUsuario | null>} Usuario o null si no existe
+   * @throws {ErrorBaseDatos} Si falla la consulta SQL
+   */
+  async buscarPorCorreo(correo: string): Promise<FilaUsuario | null> {
+    try {
+      const resultado = await pool.query<FilaUsuario>(
+        `SELECT ${SQL_COLUMNAS_USUARIO}
+           FROM usuarios
+          WHERE LOWER(email_institucional) = LOWER($1)
+            AND deleted_at IS NULL
+          LIMIT 1`,
+        [correo],
+      );
+      return resultado.rows[0] ?? null;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al buscar usuario por correo: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Busca un usuario activo por el identificador estable de Google (`sub`).
+   *
+   * @param googleSub - Claim `sub` del ID token de Google
+   * @returns {Promise<FilaUsuario | null>} Usuario o null si no está vinculado
+   * @throws {ErrorBaseDatos} Si falla la consulta SQL
+   */
+  async buscarPorGoogleSub(googleSub: string): Promise<FilaUsuario | null> {
+    try {
+      const resultado = await pool.query<FilaUsuario>(
+        `SELECT ${SQL_COLUMNAS_USUARIO}
+           FROM usuarios
+          WHERE google_sub = $1
+            AND deleted_at IS NULL
+          LIMIT 1`,
+        [googleSub],
+      );
+      return resultado.rows[0] ?? null;
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al buscar usuario por Google: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Vincula el `sub` de Google a un usuario que aún no lo tiene.
+   * No sobreescribe un google_sub distinto ya persistido.
+   *
+   * @param idUsuario - id_usuario
+   * @param googleSub - Claim `sub` verificado del ID token
+   */
+  async vincularGoogleSub(idUsuario: number, googleSub: string): Promise<void> {
+    try {
+      await pool.query(
+        `UPDATE usuarios
+            SET google_sub = $1,
+                updated_at = NOW()
+          WHERE id_usuario = $2
+            AND deleted_at IS NULL
+            AND google_sub IS NULL`,
+        [googleSub, idUsuario],
+      );
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al vincular cuenta Google: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Marca primer_login = FALSE tras autenticación con Google (identidad verificada).
+   *
+   * @param idUsuario - id_usuario
+   */
+  async marcarPrimerLoginCompletado(idUsuario: number): Promise<void> {
+    try {
+      await pool.query(
+        `UPDATE usuarios
+            SET primer_login = FALSE,
+                updated_at   = NOW()
+          WHERE id_usuario = $1
+            AND deleted_at IS NULL`,
+        [idUsuario],
+      );
+    } catch (error) {
+      throw new ErrorBaseDatos(`Error al completar primer login: ${(error as Error).message}`);
     }
   }
 
@@ -249,18 +343,7 @@ export class RepositorioUsuario {
   async obtenerPorId(idUsuario: number): Promise<FilaUsuario | null> {
     try {
       const resultado = await pool.query<FilaUsuario>(
-        `SELECT id_usuario          AS id,
-                nombre_completo,
-                codigo_estudiantil,
-                email_institucional,
-                password_hash,
-                LOWER(rol::TEXT)    AS rol,
-                primer_login,
-                intentos_fallidos,
-                bloqueado_hasta,
-                ultimo_login,
-                activo,
-                deleted_at
+        `SELECT ${SQL_COLUMNAS_USUARIO}
            FROM usuarios
           WHERE id_usuario = $1
             AND deleted_at IS NULL

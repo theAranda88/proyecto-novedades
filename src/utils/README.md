@@ -31,6 +31,8 @@ JWT_SECRET=proyecto_novedades_secret_2026
 JWT_EXPIRES_IN=8h
 BCRYPT_COST=12
 CORS_ORIGIN_DEV=http://localhost:4200
+GOOGLE_CLIENT_ID=tu_client_id.apps.googleusercontent.com
+GOOGLE_DOMINIO_PERMITIDO=uniautonoma.edu.co
 ```
 
 > El archivo `.env` NO esta en el repositorio (esta en `.gitignore`).
@@ -78,13 +80,22 @@ Puerto   : 3000
 
 ## Usuarios de prueba (password: `Password123`)
 
-| codigo_estudiantil | Rol        | Estado             |
-|--------------------|------------|--------------------|
-| `2024001`          | estudiante | matricula activa   |
-| `2024002`          | estudiante | matricula activa   |
-| `2023010`          | estudiante | matricula INACTIVA |
-| `SEC001`           | secretaria | activo             |
-| `ADMIN001`         | admin      | activo             |
+| correo | codigo_estudiantil | Rol        | Estado             |
+|--------|--------------------|------------|--------------------|
+| `cperez@proyectonovedades.edu.co` | `2024001` | estudiante | matricula activa   |
+| `mlopez@proyectonovedades.edu.co` | `2024002` | estudiante | matricula activa   |
+| `lgomez@proyectonovedades.edu.co` | `2023010` | estudiante | matricula INACTIVA |
+| `secretaria@proyectonovedades.edu.co` | `SEC001` | secretaria | activo             |
+| `admin@proyectonovedades.edu.co` | `ADMIN001` | admin | activo             |
+
+Login Google (migración 012, password `Password123` o botón Google):
+
+| correo | codigo |
+|--------|--------|
+| `cristian.aranda.h@uniautonoma.edu.co` | `2026901` |
+| `zulema.leon.e@uniautonoma.edu.co` | `2026902` |
+| `yudith.agredo.r@uniautonoma.edu.co` | `2026903` |
+| `luis.ramos.sanjuan@uniautonoma.edu.co` | `2026904` |
 
 ---
 
@@ -94,9 +105,10 @@ Puerto   : 3000
 GET  /api/health                           → publica (sin token)
 GET  /api/docs                             → Swagger UI
 
-POST /api/auth/login                       → sin token
+POST /api/auth/login                       → sin token (body: correo + password)
+POST /api/auth/google                      → sin token (body: id_token de GIS)
 POST /api/auth/change-password             → token primer_login
-POST /api/auth/forgot-password             → sin token
+POST /api/auth/forgot-password             → sin token (body: correo)
 
 POST  /api/solicitudes                     → Token ESTUDIANTE
 GET   /api/solicitudes/mias?periodo=2026-1 → Token ESTUDIANTE
@@ -108,7 +120,7 @@ PATCH /api/solicitudes/:id/estado          → Token SECRETARIA / ADMIN
 
 ## Uso del token JWT
 
-1. Hacer `POST /api/auth/login` con `codigo_estudiantil` y `password`
+1. Hacer `POST /api/auth/login` con `correo` y `password`, o `POST /api/auth/google` con `id_token`
 2. Copiar el `token` de la respuesta
 3. En cada endpoint protegido agregar el header:
    ```

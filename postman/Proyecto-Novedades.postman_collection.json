@@ -51,6 +51,24 @@
       "value": "8",
       "type": "string",
       "description": "ID de estudiante para pruebas. Valor por defecto: 8 (codigo 2024008 - Ana Beatriz Flores Gutierrez)"
+    },
+    {
+      "key": "google_id_token",
+      "value": "",
+      "type": "string",
+      "description": "ID token de Google (claim JWT). NO es el access_token. Pegarlo tras OAuth en Postman o GIS."
+    },
+    {
+      "key": "google_client_id",
+      "value": "207388611951-5dfkn7lmv17sdganidho63rnqledppb5.apps.googleusercontent.com",
+      "type": "string",
+      "description": "Client ID público de Google Cloud (Aplicación web). No es el Client Secret."
+    },
+    {
+      "key": "correo_workspace",
+      "value": "cristian.aranda.h@uniautonoma.edu.co",
+      "type": "string",
+      "description": "Correo institucional para POST /api/auth/login (Password123). Cambiar por zulema/yudith/luis si aplica."
     }
   ],
   "item": [
@@ -102,7 +120,7 @@
     },
     {
       "name": "Autenticacion (HU_001)",
-      "description": "Endpoints de login y gestion de contraseñas. Rutas publicas.\n\n**Rate Limit:** 10 intentos por IP cada 15 minutos en /login.\n**Bloqueo:** 5 intentos fallidos = cuenta bloqueada 15 minutos (HTTP 423).",
+      "description": "Endpoints de login y gestion de contraseñas. Rutas publicas.\n\n**Rate Limit:** 10 intentos por IP cada 15 minutos en /login y /google.\n**Bloqueo:** 5 intentos fallidos = cuenta bloqueada 15 minutos (HTTP 423).\n**Login:** correo + password, o POST /api/auth/google con id_token de @uniautonoma.edu.co.",
       "item": [
         {
           "name": "POST Login — Estudiante activo",
@@ -162,7 +180,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"2024001\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"correo\": \"cperez@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -170,7 +188,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Autentica al estudiante 2024001 (Carlos Andres Perez Lopez) con matricula activa.\n\n**Campos (HU_DB v2):**\n- `codigo_estudiantil` — reemplaza email_institucional\n- `password` — minimo 8 caracteres\n\n**Flujo HU_001:**\n1. Verifica existencia (deleted_at IS NULL)\n2. Verifica si esta bloqueado (bloqueado_hasta)\n3. Compara con bcrypt (cost 12)\n4. Registra intento fallido si falla\n5. Verifica activo = TRUE\n6. Verifica matricula_activa = TRUE (solo estudiante)\n7. Genera JWT con primer_login en el payload\n8. Resetea intentos_fallidos, actualiza ultimo_login"
+            "description": "Autentica al estudiante 2024001 (Carlos Andres Perez Lopez) con matricula activa.\n\n**Campos:**\n- `correo` — correo institucional (reemplaza codigo_estudiantil como credencial)\n- `password` — minimo 8 caracteres\n\n**Flujo HU_001:**\n1. Verifica existencia (deleted_at IS NULL) por correo\n2. Verifica si esta bloqueado (bloqueado_hasta)\n3. Compara con bcrypt (cost 12)\n4. Registra intento fallido si falla\n5. Verifica activo = TRUE\n6. Verifica matricula_activa = TRUE (solo estudiante)\n7. Genera JWT con primer_login en el payload\n8. Resetea intentos_fallidos, actualiza ultimo_login"
           },
           "response": [
             {
@@ -179,6 +197,59 @@
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
               "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Carlos Andres Perez Lopez. Sesion iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"id_usuario\": 3,\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": false,\n    \"codigo_estudiantil\": \"2024001\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login — Correo institucional (Workspace)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200 - Login por correo institucional', () => pm.response.to.have.status(200));",
+                  "pm.test('ok es true', () => pm.expect(r.ok).to.be.true);",
+                  "pm.test('Token JWT presente', () => {",
+                  "    pm.expect(r.datos.token).to.be.a('string');",
+                  "    pm.expect(r.datos.token.split('.')).to.have.lengthOf(3);",
+                  "});",
+                  "pm.test('Rol estudiante', () => pm.expect(r.datos.rol).to.eql('estudiante'));",
+                  "pm.test('codigo_estudiantil de prueba Google', () => {",
+                  "    pm.expect(['2026901','2026902','2026903','2026904']).to.include(r.datos.codigo_estudiantil);",
+                  "});",
+                  "if (r.datos?.token && !r.datos.primer_login) {",
+                  "    pm.collectionVariables.set('token', r.datos.token);",
+                  "    console.log('Token guardado para:', r.datos.nombre_completo, r.datos.codigo_estudiantil);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"correo\": \"{{correo_workspace}}\",\n  \"password\": \"Password123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Prueba REAL del login por correo institucional (sin botón de Google).\n\n**Esto NO es el login de Google.** Google no se puede simular mandando solo el correo: el backend exigiría un ID token firmado por Google. Si aceptáramos solo el correo, cualquiera podría entrar como otra persona.\n\n**Qué sí prueba este request:** el mismo JWT, matrícula, roles y el resto de la API, usando el correo @uniautonoma.edu.co ya cargado en la migración 012.\n\n**Contraseña:** `Password123` (hash local del sistema). No es la contraseña de Google. No la envíes al agente ni la pongas en el repo.\n\nCambia `{{correo_workspace}}` por:\n- cristian.aranda.h@uniautonoma.edu.co\n- zulema.leon.e@uniautonoma.edu.co\n- yudith.agredo.r@uniautonoma.edu.co\n- luis.ramos.sanjuan@uniautonoma.edu.co\n\nPara probar **Google de verdad** usa `POST Login Google — ID token institucional` (OAuth de Postman → copiar `id_token`)."
+          },
+          "response": [
+            {
+              "name": "200 — Login correo institucional",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Cristian Aranda. Sesion iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"id_usuario\": 15,\n    \"nombre_completo\": \"Cristian Aranda\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": false,\n    \"codigo_estudiantil\": \"2026901\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
             }
           ]
         },
@@ -208,7 +279,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"SEC001\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"correo\": \"secretaria@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -253,7 +324,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"ADMIN001\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"correo\": \"admin@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -295,7 +366,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"2023010\",\n  \"password\": \"Password123\"\n}",
+              "raw": "{\n  \"correo\": \"lgomez@proyectonovedades.edu.co\",\n  \"password\": \"Password123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -345,7 +416,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"2024001\",\n  \"password\": \"contrasena_incorrecta\"\n}",
+              "raw": "{\n  \"correo\": \"cperez@proyectonovedades.edu.co\",\n  \"password\": \"contrasena_incorrecta\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -387,7 +458,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"\",\n  \"password\": \"123\"\n}",
+              "raw": "{\n  \"correo\": \"correo-invalido\",\n  \"password\": \"123\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -395,7 +466,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "login"]
             },
-            "description": "Codigo vacio y password < 8 chars. Falla validacion Zod antes de llegar a la BD."
+            "description": "Correo invalido y password < 8 chars. Falla validacion Zod antes de llegar a la BD."
           },
           "response": [
             {
@@ -403,7 +474,7 @@
               "status": "Unprocessable Entity",
               "code": 422,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada invalidos: codigo_estudiantil: El codigo estudiantil no puede estar vacio | password: La contrasena debe tener minimo 8 caracteres\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Datos de entrada invalidos: correo: Debe proporcionar un correo válido | password: La contrasena debe tener minimo 8 caracteres\",\n  \"datos\": null,\n  \"codigo_estado\": 422\n}"
             }
           ]
         },
@@ -507,7 +578,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"codigo_estudiantil\": \"2024001\"\n}",
+              "raw": "{\n  \"correo\": \"cperez@proyectonovedades.edu.co\"\n}",
               "options": { "raw": { "language": "json" } }
             },
             "url": {
@@ -515,7 +586,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "auth", "forgot-password"]
             },
-            "description": "Inicia recuperacion de contrasena. La respuesta es siempre generica para no revelar si el codigo existe (seguridad anti-enumeracion)."
+            "description": "Inicia recuperacion de contrasena. La respuesta es siempre generica para no revelar si el correo existe (seguridad anti-enumeracion)."
           },
           "response": [
             {
@@ -523,7 +594,64 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Si el codigo estudiantil existe, recibira un correo con instrucciones para restablecer su contrasena\",\n  \"datos\": null,\n  \"codigo_estado\": 200\n}"
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Si el correo existe, recibira instrucciones para restablecer su contrasena\",\n  \"datos\": null,\n  \"codigo_estado\": 200\n}"
+            }
+          ]
+        },
+        {
+          "name": "POST Login Google — ID token institucional",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const r = pm.response.json();",
+                  "pm.test('Status 200, 401, 403 o 500 segun token', () => {",
+                  "    pm.expect([200, 401, 403, 422, 500]).to.include(pm.response.code);",
+                  "});",
+                  "pm.test('Formato estandar correcto', () => {",
+                  "    pm.expect(r).to.have.all.keys('ok','mensaje','datos','codigo_estado');",
+                  "});",
+                  "if (r.ok && r.datos?.token) {",
+                  "    pm.collectionVariables.set('token', r.datos.token);",
+                  "    pm.test('Token JWT presente', () => pm.expect(r.datos.token.split('.')).to.have.lengthOf(3));",
+                  "    pm.test('codigo_estudiantil en respuesta', () => pm.expect(r.datos).to.have.property('codigo_estudiantil'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_token\": \"{{google_id_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/google",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "google"]
+            },
+            "description": "Prueba REAL de login con Google desde Postman.\n\n**No sirve enviar solo el correo.** Este endpoint verifica un JWT emitido por Google (`id_token`). El correo se lee de ese token, no del body.\n\n### Cómo obtener el id_token en Postman\n1. En Google Cloud → Credenciales → tu cliente OAuth → **URI de redirección autorizados** agrega:\n   `https://oauth.pstmn.io/v1/callback`\n2. En esta petición: pestaña **Authorization** no (el request va sin Bearer de Google). El token se pega en la variable.\n3. Crea una petición auxiliar o usa **Authorization → OAuth 2.0 → Get New Access Token** en una petición cualquiera con:\n   - Grant type: Authorization Code (With PKCE)\n   - Auth URL: `https://accounts.google.com/o/oauth2/v2/auth`\n   - Access Token URL: `https://oauth2.googleapis.com/token`\n   - Client ID: `{{google_client_id}}`\n   - Client Secret: el de Google Cloud (solo en el Environment local, nunca en la colección)\n   - Scope: `openid email profile`\n   - Callback: `https://oauth.pstmn.io/v1/callback`\n4. Inicia sesión con `@uniautonoma.edu.co`. En el popup del token copia el campo **id_token** (NO el access_token).\n5. Pégalo en `{{google_id_token}}` y envía este POST.\n\nEl backend responde el JWT interno del sistema (igual que /login) y lo guarda en `{{token}}` si el test pasa."
+          },
+          "response": [
+            {
+              "name": "200 — Login Google exitoso",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": true,\n  \"mensaje\": \"Bienvenido, Carlos Andres Perez Lopez. Sesion iniciada correctamente\",\n  \"datos\": {\n    \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n    \"id_usuario\": 3,\n    \"nombre_completo\": \"Carlos Andres Perez Lopez\",\n    \"rol\": \"estudiante\",\n    \"primer_login\": false,\n    \"codigo_estudiantil\": \"2024001\",\n    \"expira_en\": \"8h\"\n  },\n  \"codigo_estado\": 200\n}"
+            },
+            {
+              "name": "403 — Dominio no institucional",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"ok\": false,\n  \"mensaje\": \"Solo se permite iniciar sesion con una cuenta institucional @uniautonoma.edu.co\",\n  \"datos\": null,\n  \"codigo_estado\": 403\n}"
             }
           ]
         }
@@ -1296,7 +1424,7 @@
               "host": ["{{base_url}}"],
               "path": ["api", "usuarios"]
             },
-            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nCrea una nueva secretaria en el sistema.\n\n**Respuesta:**\n- ✔️ Usuario creado con `primer_login = TRUE`\n- ✔️ Contraseña temporal de 10 caracteres (mostrar UNA sola vez)\n- ✔️ Mensaje instructivo sobre flujo de primer login\n\n**Instrucciones para la nueva secretaria:**\n1. Usar el codigo_estudiantil y contraseña temporal para login\n2. Ir a `POST /api/auth/change-password` para cambiar contraseña\n3. Después puede acceder al sistema"
+            "description": "**Autenticarse como ADMIN antes de ejecutar.**\n\nCrea una nueva secretaria en el sistema.\n\n**Respuesta:**\n- ✔️ Usuario creado con `primer_login = TRUE`\n- ✔️ Contraseña temporal de 10 caracteres (mostrar UNA sola vez)\n- ✔️ Mensaje instructivo sobre flujo de primer login\n\n**Instrucciones para la nueva secretaria:**\n1. Usar el correo institucional y contraseña temporal para login\n2. Ir a `POST /api/auth/change-password` para cambiar contraseña\n3. Después puede acceder al sistema"
           },
           "response": [
             {

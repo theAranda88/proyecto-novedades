@@ -26,7 +26,7 @@ Ambientes disponibles:
 - PERSONALIZADO: https://api.proyectonovedades.edu.co (Próximo)
 
 AUTENTICACION:
-- Ejecuta POST /api/auth/login para obtener el token JWT
+- Ejecuta POST /api/auth/login (correo + password) o POST /api/auth/google para obtener el token JWT
 - Haz clic en el botón "Authorize" arriba a la derecha
 - Ingresa: Bearer [tu_token_aqui]
 
@@ -106,11 +106,13 @@ ROLES DEL SISTEMA
 
 FLUJO DE AUTENTICACION (HU_001)
 
-1. POST /api/auth/login con codigo_estudiantil + password
-2. Si primer_login = true: usar el token en POST /api/auth/change-password para cambiar contrasena temporal
-3. Si primer_login = false: usar el token en todos los demas endpoints
-4. Token expira en 8 horas
-5. Bloqueo de cuenta tras 5 intentos fallidos por 15 minutos
+1. POST /api/auth/login con correo + password
+2. POST /api/auth/google con id_token (cuenta Workspace @uniautonoma.edu.co)
+3. Si primer_login = true (solo vía contraseña): usar el token en POST /api/auth/change-password
+4. Si primer_login = false: usar el token en todos los demas endpoints
+5. Token expira en 8 horas
+6. Bloqueo de cuenta tras 5 intentos fallidos por 15 minutos (vía contraseña)
+7. Google no crea usuarios: el correo debe existir en la base de datos
 
 ---
 
@@ -200,12 +202,13 @@ FORMATO DE RESPUESTA UNIFORME
         },
         LoginBody: {
           type: 'object',
-          required: ['codigo_estudiantil', 'password'],
+          required: ['correo', 'password'],
           properties: {
-            codigo_estudiantil: {
+            correo: {
               type:        'string',
-              example:     '2024001',
-              description: 'Código estudiantil institucional',
+              format:      'email',
+              example:     'cperez@proyectonovedades.edu.co',
+              description: 'Correo institucional del usuario',
             },
             password: {
               type:        'string',
@@ -213,6 +216,17 @@ FORMATO DE RESPUESTA UNIFORME
               minLength:   8,
               example:     'Password123',
               description: 'Contraseña del usuario (mínimo 8 caracteres)',
+            },
+          },
+        },
+        LoginGoogleBody: {
+          type: 'object',
+          required: ['id_token'],
+          properties: {
+            id_token: {
+              type:        'string',
+              example:     'eyJhbGciOiJSUzI1NiIsImtpZCI6Ij...',
+              description: 'ID token emitido por Google Identity Services. Dominio obligatorio: uniautonoma.edu.co',
             },
           },
         },
@@ -449,14 +463,22 @@ Métricas disponibles:
         name:        'Autenticacion',
         description: `Endpoints de inicio de sesión y gestión de tokens JWT. Rutas públicas — no requieren token.
 
-Usuarios de prueba (codigo_estudiantil / contraseña):
-| Código | Contraseña | Rol | Estado |
+Usuarios de prueba (correo / contraseña):
+| Correo | Contraseña | Rol | Estado |
 |---|---|---|---|
-| 2024001 | Password123 | estudiante | activo |
-| 2024002 | Password123 | estudiante | activo |
-| 2023010 | Password123 | estudiante | matricula inactiva |
-| SEC001  | Password123 | secretaria | activo |
-| ADMIN001| Password123 | admin      | activo |`,
+| cperez@proyectonovedades.edu.co | Password123 | estudiante | activo |
+| mlopez@proyectonovedades.edu.co | Password123 | estudiante | activo |
+| lgomez@proyectonovedades.edu.co | Password123 | estudiante | matricula inactiva |
+| secretaria@proyectonovedades.edu.co | Password123 | secretaria | activo |
+| admin@proyectonovedades.edu.co | Password123 | admin | activo |
+
+Pruebas Google (Workspace real, matrícula activa, Password123 también sirve en /login):
+| cristian.aranda.h@uniautonoma.edu.co | 2026901 |
+| zulema.leon.e@uniautonoma.edu.co | 2026902 |
+| yudith.agredo.r@uniautonoma.edu.co | 2026903 |
+| luis.ramos.sanjuan@uniautonoma.edu.co | 2026904 |
+
+Login Google: POST /api/auth/google con id_token de una de esas cuentas. Deben estar en la pantalla de consentimiento OAuth como usuarios de prueba.`,
       },
       {
         name:        'Solicitudes',

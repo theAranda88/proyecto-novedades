@@ -1,11 +1,12 @@
 // src/routes/authRoutes.ts
-// Rutas de autenticación — Implementa HU_001 completa
+// Rutas de autenticación — HU_001 + login Google institucional
 
 import { Router }                         from 'express';
 import { ControladorAutenticacion }        from '../controllers/AuthController';
 import { validarEsquema, verificarTokenCambioPassword } from '../middlewares/authMiddleware';
 import {
   esquemaLogin,
+  esquemaLoginGoogle,
   esquemaCambioPassword,
   esquemaRecuperarPassword,
 } from '../schemas/auth.schema';
@@ -17,12 +18,13 @@ const controladorAutenticacion     = new ControladorAutenticacion();
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Iniciar sesión en el sistema
+ *     summary: Iniciar sesión con correo institucional y contraseña
  *     description: |
- *       Autentica un usuario con su **código estudiantil** y contraseña.
+ *       Autentica un usuario con su **correo institucional** y contraseña.
+ *       El código estudiantil sigue existiendo en el JWT; ya no se usa como credencial.
  *
  *       ### Flujo de autenticación (HU_001):
- *       1. Verifica existencia del usuario (`deleted_at IS NULL`)
+ *       1. Verifica existencia del usuario (`deleted_at IS NULL`) por correo
  *       2. Verifica si la cuenta está bloqueada (`bloqueado_hasta`)
  *       3. Compara contraseña con **bcrypt** (cost ≥ 12)
  *       4. Si la contraseña falla, incrementa `intentos_fallidos`
@@ -32,14 +34,18 @@ const controladorAutenticacion     = new ControladorAutenticacion();
  *       8. Si `primer_login = TRUE`: devuelve token temporal y debe ir a `/change-password`
  *       9. Registra `ultimo_login`, resetea `intentos_fallidos = 0`
  *
- *       ### Credenciales de prueba:
- *       | Código | Contraseña | Rol | Estado |
+ *       ### Credenciales de prueba (seed):
+ *       | Correo | Contraseña | Rol | Estado |
  *       |---|---|---|---|
- *       | 2024001 | Password123 | estudiante | activo |
- *       | 2024002 | Password123 | estudiante | activo |
- *       | 2023010 | Password123 | estudiante | matrícula inactiva |
- *       | SEC001 | Password123 | secretaria | activo |
- *       | ADMIN001 | Password123 | admin | activo |
+ *       | cperez@proyectonovedades.edu.co | Password123 | estudiante | activo |
+ *       | mlopez@proyectonovedades.edu.co | Password123 | estudiante | activo |
+ *       | lgomez@proyectonovedades.edu.co | Password123 | estudiante | matrícula inactiva |
+ *       | secretaria@proyectonovedades.edu.co | Password123 | secretaria | activo |
+ *       | admin@proyectonovedades.edu.co | Password123 | admin | activo |
+ *       | cristian.aranda.h@uniautonoma.edu.co | Password123 | estudiante | Google / activo |
+ *       | zulema.leon.e@uniautonoma.edu.co | Password123 | estudiante | Google / activo |
+ *       | yudith.agredo.r@uniautonoma.edu.co | Password123 | estudiante | Google / activo |
+ *       | luis.ramos.sanjuan@uniautonoma.edu.co | Password123 | estudiante | Google / activo |
  *     tags:
  *       - Autenticacion
  *     security: []
@@ -53,22 +59,27 @@ const controladorAutenticacion     = new ControladorAutenticacion();
  *             estudianteActivo:
  *               summary: Estudiante con matrícula activa
  *               value:
- *                 codigo_estudiantil: "2024001"
+ *                 correo: "cperez@proyectonovedades.edu.co"
  *                 password: "Password123"
  *             estudianteInactivo:
  *               summary: Estudiante con matrícula inactiva
  *               value:
- *                 codigo_estudiantil: "2023010"
+ *                 correo: "lgomez@proyectonovedades.edu.co"
  *                 password: "Password123"
  *             secretaria:
  *               summary: Secretaria académica
  *               value:
- *                 codigo_estudiantil: "SEC001"
+ *                 correo: "secretaria@proyectonovedades.edu.co"
  *                 password: "Password123"
  *             admin:
  *               summary: Administrador del sistema
  *               value:
- *                 codigo_estudiantil: "ADMIN001"
+ *                 correo: "admin@proyectonovedades.edu.co"
+ *                 password: "Password123"
+ *             estudianteGoogle:
+ *               summary: Estudiante con correo Workspace real
+ *               value:
+ *                 correo: "cristian.aranda.h@uniautonoma.edu.co"
  *                 password: "Password123"
  *     responses:
  *       200:
@@ -122,6 +133,76 @@ enrutadorAuth.post(
 
 /**
  * @swagger
+ * /api/auth/google:
+ *   post:
+ *     summary: Iniciar sesión con Google (cuenta institucional)
+ *     description: |
+ *       Recibe el **ID token** emitido por Google Identity Services en el cliente Angular.
+ *       El backend verifica el token con Google, exige dominio **@uniautonoma.edu.co**
+ *       y busca un usuario **ya cargado** en `usuarios`. **No hay auto-registro.**
+ *
+ *       ### Flujo:
+ *       1. El cliente muestra el botón de Google (origen autorizado: `http://localhost:4200`)
+ *       2. El usuario elige su cuenta Workspace institucional
+ *       3. Angular envía `{ "id_token": "..." }` (`credential` del callback de GIS)
+ *       4. Se valida `aud` (= `GOOGLE_CLIENT_ID`), `email_verified` y dominio `uniautonoma.edu.co`
+ *       5. Se localiza el usuario por `google_sub` o por `email_institucional`
+ *       6. Se aplican las mismas reglas HU_001: bloqueo 423, `activo`, `matricula_activa`
+ *       7. Si `primer_login` era true, se marca como completado (Google ya verificó la identidad)
+ *       8. Se emite el mismo JWT que el login por correo
+ *
+ *       Requiere `GOOGLE_CLIENT_ID` en el servidor. Sin ese valor responde HTTP 500.
+ *     tags:
+ *       - Autenticacion
+ *     security: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginGoogleBody'
+ *           example:
+ *             id_token: "eyJhbGciOiJSUzI1NiIsImtpZCI6Ij..."
+ *     responses:
+ *       200:
+ *         description: Login Google exitoso — Token JWT interno
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RespuestaExito'
+ *             example:
+ *               ok: true
+ *               mensaje: "Bienvenido, Carlos Andres Perez Lopez. Sesión iniciada correctamente"
+ *               datos:
+ *                 token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *                 id_usuario: 3
+ *                 nombre_completo: "Carlos Andres Perez Lopez"
+ *                 rol: "estudiante"
+ *                 primer_login: false
+ *                 codigo_estudiantil: "2024001"
+ *                 expira_en: "8h"
+ *               codigo_estado: 200
+ *       401:
+ *         description: Token de Google inválido o correo no registrado
+ *       403:
+ *         description: Dominio no institucional, cuenta o matrícula inactiva
+ *       422:
+ *         description: Datos de entrada inválidos (Zod)
+ *       423:
+ *         description: Cuenta bloqueada por intentos fallidos
+ *       429:
+ *         description: Rate limit
+ *       500:
+ *         description: Falta GOOGLE_CLIENT_ID en el servidor
+ */
+enrutadorAuth.post(
+  '/google',
+  validarEsquema(esquemaLoginGoogle),
+  controladorAutenticacion.loginGoogle,
+);
+
+/**
+ * @swagger
  * /api/auth/change-password:
  *   post:
  *     summary: Cambio obligatorio de contraseña temporal
@@ -141,6 +222,8 @@ enrutadorAuth.post(
  *       1. `POST /api/auth/login` → devuelve token con `primer_login: true`
  *       2. `POST /api/auth/change-password` con ese token → devuelve nuevo token con `primer_login: false`
  *       3. Usar el nuevo token para todos los demás endpoints
+ *
+ *       El login con Google no exige este paso: Google ya verificó la identidad.
  *     tags:
  *       - Autenticacion
  *     security:
@@ -191,8 +274,8 @@ enrutadorAuth.post(
  *     summary: Recuperar contraseña olvidada
  *     description: |
  *       Inicia el flujo de recuperación de contraseña.
- *       El sistema enviará un código al correo institucional del estudiante.
- *       La respuesta es **siempre genérica** para no revelar si el código existe.
+ *       El sistema enviará un código al correo institucional.
+ *       La respuesta es **siempre genérica** para no revelar si el correo existe.
  *     tags:
  *       - Autenticacion
  *     security: []
@@ -202,19 +285,20 @@ enrutadorAuth.post(
  *         application/json:
  *           schema:
  *             type: object
- *             required: [codigo_estudiantil]
+ *             required: [correo]
  *             properties:
- *               codigo_estudiantil:
+ *               correo:
  *                 type: string
- *                 example: "2024001"
+ *                 format: email
+ *                 example: "cperez@proyectonovedades.edu.co"
  *     responses:
  *       200:
- *         description: Respuesta genérica (no revela si el código existe)
+ *         description: Respuesta genérica (no revela si el correo existe)
  *         content:
  *           application/json:
  *             example:
  *               ok: true
- *               mensaje: "Si el código estudiantil existe, recibirá un correo con instrucciones"
+ *               mensaje: "Si el correo existe, recibirá instrucciones para restablecer su contraseña"
  *               datos: null
  *               codigo_estado: 200
  *       422:
@@ -227,4 +311,3 @@ enrutadorAuth.post(
 );
 
 export default enrutadorAuth;
-

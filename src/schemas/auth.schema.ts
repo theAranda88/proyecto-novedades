@@ -5,17 +5,30 @@ import { z } from 'zod';
 
 /**
  * Esquema para POST /api/auth/login
- * Valida codigo_estudiantil (numérico) y password (mín. 8 chars).
+ * Valida correo institucional y password (mín. 8 chars).
  */
 export const esquemaLogin = z.object({
-  codigo_estudiantil: z
-    .string({ error: 'El código estudiantil es obligatorio' })
-    .min(1, 'El código estudiantil no puede estar vacío')
-    .max(20, 'El código no puede superar 20 caracteres'),
+  correo: z
+    .string({ error: 'El correo es obligatorio' })
+    .trim()
+    .min(1, 'El correo no puede estar vacío')
+    .max(150, 'El correo no puede superar 150 caracteres')
+    .email('Debe proporcionar un correo válido')
+    .transform((valor) => valor.toLowerCase()),
 
   password: z
     .string({ error: 'La contraseña es obligatoria' })
     .min(8, 'La contraseña debe tener mínimo 8 caracteres'),
+});
+
+/**
+ * Esquema para POST /api/auth/google
+ * El ID token lo emite Google Identity Services en el cliente (Angular).
+ */
+export const esquemaLoginGoogle = z.object({
+  id_token: z
+    .string({ error: 'El token de Google es obligatorio' })
+    .min(20, 'El token de Google no es válido'),
 });
 
 /**
@@ -36,15 +49,19 @@ export const esquemaCambioPassword = z.object({
 
 /**
  * Esquema para POST /api/auth/forgot-password (HU_001 §CA-05)
- * Solo requiere el código estudiantil para iniciar recuperación.
+ * Solo requiere el correo institucional para iniciar recuperación.
  */
 export const esquemaRecuperarPassword = z.object({
-  codigo_estudiantil: z
-    .string({ error: 'El código estudiantil es obligatorio' })
-    .min(1, 'El código estudiantil no puede estar vacío')
-    .max(20, 'El código no puede superar 20 caracteres'),
+  correo: z
+    .string({ error: 'El correo es obligatorio' })
+    .trim()
+    .min(1, 'El correo no puede estar vacío')
+    .max(150, 'El correo no puede superar 150 caracteres')
+    .email('Debe proporcionar un correo válido')
+    .transform((valor) => valor.toLowerCase()),
 });
 
 export type TDatosLogin             = z.infer<typeof esquemaLogin>;
+export type TDatosLoginGoogle       = z.infer<typeof esquemaLoginGoogle>;
 export type TDatosCambioPassword    = z.infer<typeof esquemaCambioPassword>;
 export type TDatosRecuperarPassword = z.infer<typeof esquemaRecuperarPassword>;

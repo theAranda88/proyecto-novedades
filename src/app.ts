@@ -148,8 +148,9 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-app.use('/api/auth/login', limitadorLogin);
-app.use('/api/auth',       enrutadorAuth);
+app.use('/api/auth/login',  limitadorLogin);
+app.use('/api/auth/google', limitadorLogin);
+app.use('/api/auth',        enrutadorAuth);
 
 // ------------------------------------------------------------
 // RUTAS PROTEGIDAS (requieren JWT válido + primer_login = FALSE)

@@ -25,8 +25,9 @@
 .idea/httpRequests/
 .idea/shelf/
 
-# Cursor IDE
+# Cursor — carpeta local del IDE; no subir al remoto
 .cursor/
+AGENTS.md
 
 # Visual Studio Code
 .vscode/

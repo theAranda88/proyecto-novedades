@@ -19,7 +19,8 @@ ADMIN crea la cuenta en BD
 
 ╔══════════════════════════════════════════╗
 ║  PASO 1: POST /api/auth/login            ║
-║  { codigo_estudiantil, password }        ║
+║  { correo, password }                    ║
+║  o POST /api/auth/google { id_token }    ║
 ╚══════════════════════════════════════════╝
          │
          ▼
@@ -173,7 +174,7 @@ export const verificarToken = (req, res, next) => {
 
 ```
 1. POST /api/auth/login
-   Body: { "codigo_estudiantil": "2024001", "password": "Password123" }
+   Body: { "correo": "cperez@proyectonovedades.edu.co", "password": "Password123" }
 
    Respuesta:
    {
@@ -240,7 +241,7 @@ DESPUES del cambio:
 | Token | Cuando se genera | Que puede hacer |
 |---|---|---|
 | **Token temporal** | Login con `primer_login = TRUE` | **Solo** `POST /change-password` |
-| **Token completo** | Login normal O despues de cambiar contrasena | Todos los endpoints segun el rol |
+| **Token completo** | Login normal, login Google, O despues de cambiar contrasena | Todos los endpoints segun el rol |
 
 La diferencia entre los dos tokens es **una sola propiedad** dentro del JWT:
 

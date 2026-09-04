@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     intentos_fallidos    SMALLINT     NOT NULL DEFAULT 0,
     bloqueado_hasta      TIMESTAMPTZ  NULL,
     ultimo_login         TIMESTAMPTZ  NULL,
+    google_sub           VARCHAR(255) NULL,
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     deleted_at           TIMESTAMPTZ  NULL,
@@ -130,6 +131,11 @@ CREATE TABLE IF NOT EXISTS estudiantes (
     promedio_acumulado     DECIMAL(4,2)  NOT NULL DEFAULT 0.00,
     estado_academico       VARCHAR(20)   NOT NULL DEFAULT 'normal'
                            CHECK (estado_academico IN ('normal','bajo_rendimiento','suspendido')),
+    telefono               VARCHAR(30)   NULL,
+    anio_academico         VARCHAR(10)   NULL,
+    periodo_academico      VARCHAR(10)   NULL,
+    sesion_academica       VARCHAR(10)   NULL
+                           CHECK (sesion_academica IS NULL OR sesion_academica IN ('PREG','POSG')),
     created_at             TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     updated_at             TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
     deleted_at             TIMESTAMPTZ   NULL,
@@ -306,8 +312,11 @@ CREATE TABLE IF NOT EXISTS documentos_adjuntos (
 -- ─────────────────────────────────────────────────────────────────────────────
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_codigo_estudiantil ON usuarios(codigo_estudiantil);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_usuarios_google_sub  ON usuarios(google_sub) WHERE google_sub IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_usuarios_email_institucional ON usuarios(LOWER(email_institucional)) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_usuarios_deleted            ON usuarios(deleted_at) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_estudiantes_usuario_id      ON estudiantes(usuario_id) WHERE usuario_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_estudiantes_periodo_academico ON estudiantes(anio_academico, periodo_academico, sesion_academica) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_grupos_curso_busqueda       ON grupos_curso(curso_id, jornada, periodo) WHERE activo = TRUE;
 CREATE INDEX IF NOT EXISTS idx_grupos_curso_valor_dirigido ON grupos_curso(valor_curso_dirigido) WHERE valor_curso_dirigido IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_historial_v2_elegibilidad   ON historial_v2(estudiante_id, curso_id);
@@ -472,6 +481,44 @@ UPDATE estudiantes e
   FROM usuarios u
  WHERE u.codigo_estudiantil = e.codigo_estudiantil
    AND e.usuario_id IS NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- SEED 4c: Estudiantes con correo Workspace real (pruebas Google)
+--   Contraseña: Password123  |  matricula ACTIVA  |  primer_login FALSE
+-- ─────────────────────────────────────────────────────────────────────────────
+
+DO $$
+DECLARE
+    v_hash TEXT := '$2b$10$O0n6t62MOUyaR9kwCje46ukcojI4JUQgpAYYCzy6aVo0JJ8/KIoCC';
+BEGIN
+    INSERT INTO usuarios (nombre_completo, email_institucional, password_hash,
+                          rol, activo, codigo_estudiantil, primer_login)
+    VALUES
+        ('Cristian Aranda',    'cristian.aranda.h@uniautonoma.edu.co',  v_hash, 'ESTUDIANTE', TRUE, '2026901', FALSE),
+        ('Zulema Leon',        'zulema.leon.e@uniautonoma.edu.co',      v_hash, 'ESTUDIANTE', TRUE, '2026902', FALSE),
+        ('Yudith Agredo',      'yudith.agredo.r@uniautonoma.edu.co',    v_hash, 'ESTUDIANTE', TRUE, '2026903', FALSE),
+        ('Luis Ramos Sanjuan', 'luis.ramos.sanjuan@uniautonoma.edu.co', v_hash, 'ESTUDIANTE', TRUE, '2026904', FALSE)
+    ON CONFLICT (email_institucional) DO NOTHING;
+END $$;
+
+INSERT INTO estudiantes (usuario_id, codigo_estudiantil, cod_alumno, doc_alumno, nombre_completo,
+                         email_institucional, correo_institucional,
+                         semestre_actual, programa_id, matricula_activa,
+                         jornada, creditos_inscritos, creditos_max_permitidos, estado_academico,
+                         anio_academico, periodo_academico, sesion_academica)
+SELECT
+    u.id_usuario, e.codigo, e.codigo, e.doc, e.nombre,
+    e.email, e.email, e.semestre, p.id_programa, TRUE,
+    e.jornada, 0, 20, 'normal', '2026', '1', 'PREG'
+FROM (VALUES
+    ('2026901', 'CC-6901', 'Cristian Aranda',    'cristian.aranda.h@uniautonoma.edu.co',  6, 'Ingenieria de Sistemas', 'manana'),
+    ('2026902', 'CC-6902', 'Zulema Leon',        'zulema.leon.e@uniautonoma.edu.co',      4, 'Ingenieria Industrial',  'tarde'),
+    ('2026903', 'CC-6903', 'Yudith Agredo',      'yudith.agredo.r@uniautonoma.edu.co',    5, 'Ingenieria de Sistemas', 'manana'),
+    ('2026904', 'CC-6904', 'Luis Ramos Sanjuan', 'luis.ramos.sanjuan@uniautonoma.edu.co', 3, 'Administracion de Empresas', 'noche')
+) AS e(codigo, doc, nombre, email, semestre, prog, jornada)
+JOIN programas p ON p.nombre_programa = e.prog
+JOIN usuarios  u ON u.codigo_estudiantil = e.codigo AND u.deleted_at IS NULL
+ON CONFLICT (codigo_estudiantil) DO NOTHING;
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- SEED 4b: Cursos adicionales para modalidad dirigida (no aparecen en oferta regular)
